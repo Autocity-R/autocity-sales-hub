@@ -385,7 +385,7 @@ const DirectieDashboard: React.FC = () => {
               </div>
             </Block>
 
-            {raw && <OmzetControle bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />
+            {raw && <OmzetControle bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />}
           </div>
         )}
 

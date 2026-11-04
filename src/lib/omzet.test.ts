@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allocate, countsAsRevenue, linkedOrderIds, omzetDatum, aansluiting, takTotals, type OmzetRegel } from "./omzet";
+import { allocate, countsAsRevenue, linkedOrderIds, omzetDatum, aansluiting, takTotals, liveOmzetRegels, pendingPoets, nlDate, nlDayStart, type PoetsBeurt, type OmzetRegel } from "./omzet";
 
 describe("koppel-fallback", () => {
   it("[] valt terug op work_order_id", () => expect(linkedOrderIds([], "wo1")).toEqual(["wo1"]));
@@ -68,5 +68,48 @@ describe("aansluiting", () => {
     const a = aansluiting(regels);
     expect(a.sluit).toBe(true);
     expect(a.nietToegewezen).toBe(100);
+  });
+});
+
+describe("live poets revenue", () => {
+  const beurt: PoetsBeurt = { id: "b1", day: "2026-11-04", assigned_to: "p1", vehicle_id: null, branch: "rotterdam", intern: true };
+  const invoice = (beurten: PoetsBeurt[]): OmzetRegel[] => beurten.map(b => ({
+    invoice_id: "monthly", invoice_number: null, invoice_kind: "poets_intern", tak: "poets",
+    omzet_datum: "2026-11-30", subtotal: 826.4, total: 1000, status: "concept", branch: "rotterdam",
+    created_at: "2026-12-01T08:00:00Z", klant: null, kenteken: null, telt_mee: true, telt_niet_mee: false,
+    telt_niet_mee_reden: null, gekoppeld: true, work_order_id: b.id, discipline: "poets",
+    medewerker_id: b.assigned_to, aandeel_delen: 1, bedrag: 82.64,
+  }));
+  const ten = Array.from({ length: 10 }, (_, i) => ({ ...beurt, id: `b${i}` }));
+  it("month without invoice: 10 × 82.64 = 826.40 live", () => {
+    const rows = liveOmzetRegels([], ten, new Set(), "2026-11-01", "2026-12-01");
+    expect(takTotals(rows).poets).toBe(826.4);
+    expect(takTotals(rows).totaal).toBe(826.4);
+    expect(aansluiting(rows).medewerkers).toBe(826.4);
+    expect(aansluiting(rows).sluit).toBe(true);
+  });
+  it("invoice moves pending to invoiced without changing month total", () => {
+    const ids = new Set(ten.map(b => b.id));
+    const rows = liveOmzetRegels(invoice(ten), ten, ids, "2026-11-01", "2026-12-01");
+    expect(pendingPoets(ten, ids, "2026-11-01", "2026-12-01").bedrag).toBe(0);
+    expect(takTotals(rows).poets).toBe(826.4);
+    expect(aansluiting(rows).medewerkers).toBe(826.4);
+    expect(aansluiting(rows).sluit).toBe(true);
+  });
+  it("31 October 23:30 NL stays October, finished date wins over approval", () => {
+    const finished = "2026-10-31T22:30:00Z";
+    const b = { ...beurt, day: nlDate(finished) };
+    expect(omzetDatum("poets_intern", "2026-11-01T09:00:00Z", [{ finished_at: finished, approved_at: "2026-11-01T08:00:00Z" }])).toBe("2026-10-31");
+    expect(takTotals(liveOmzetRegels([], [b], new Set(), "2026-10-01", "2026-11-01")).poets).toBe(82.64);
+    expect(takTotals(liveOmzetRegels([], [b], new Set(), "2026-11-01", "2026-12-01")).poets).toBe(0);
+    expect(nlDayStart("2026-10-01")).toBe("2026-09-30T22:00:00.000Z");
+    expect(nlDayStart("2026-11-01")).toBe("2026-10-31T23:00:00.000Z");
+  });
+  it("unassigned work never counts, even if marked internal", () => {
+    const rows = liveOmzetRegels([], [{ ...beurt, assigned_to: null }], new Set(), "2026-11-01", "2026-12-01");
+    expect(takTotals(rows).poets).toBe(0);
+  });
+  it("external and missing profile work are excluded", () => {
+    expect(pendingPoets([{ ...beurt, intern: false }, { ...beurt, id: "missing", intern: null }], new Set(), "2026-11-01", "2026-12-01").count).toBe(0);
   });
 });
