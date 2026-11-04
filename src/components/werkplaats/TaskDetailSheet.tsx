@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import React, { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";

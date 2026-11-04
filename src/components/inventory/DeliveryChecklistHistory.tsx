@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
