@@ -3,7 +3,7 @@ import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AsCard, AsPill, AsLicensePlate } from "@/components/aftersales/ui";
 import { aansluiting, inPeriod, takTotals, TAK_LABEL, type Tak } from "@/lib/omzet";
-import { controle, poetsNogOpMaandfactuur, type OmzetBron } from "@/services/omzetService";
+import { controle, poetsNogOpMaandfactuur, omzetLiveRegels, type OmzetBron } from "@/services/omzetService";
 
 export const eur2 = (n: number) => new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2 }).format(n || 0);
 const dmy = (s?: string | null) => (s ? new Date(s.length === 10 ? `${s}T12:00:00` : s).toLocaleDateString("nl-NL", { timeZone: "Europe/Amsterdam" }) : "—");
@@ -14,7 +14,8 @@ export const CONTROLE_ROLES = ["owner", "admin", "manager", "operationeel_direct
 export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string; label: string }> = ({ bron, van, tot, label }) => {
   const { userRole, isAdmin } = useAuth();
   if (!isAdmin && !CONTROLE_ROLES.includes(userRole || "")) return null;
-  const regels = inPeriod(bron.regels, van, tot);
+  const regels = omzetLiveRegels(bron, van, tot);
+  const facturen = takTotals(inPeriod(bron.regels, van, tot)).totaal;
   const a = aansluiting(regels);
   const t = takTotals(regels);
   const c = controle(bron, van, tot);
@@ -39,10 +40,10 @@ export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string
           {a.sluit ? "Aansluiting klopt" : `Verschil: ${eur2(a.verschilTak || a.verschilMedewerker)}`}
         </div>
         <div className="mt-1 grid grid-cols-1 gap-1 text-[11.5px] text-slate-700 sm:grid-cols-2">
-          <div>Totaal facturen: <b data-testid="controle-totaal">{eur2(a.totaal)}</b></div>
+          <div>Facturen {eur2(facturen)} + poets nog op maandfactuur {eur2(po.bedrag)} = <b data-testid="controle-totaal">{eur2(a.totaal)}</b></div>
           <div>{(Object.keys(TAK_LABEL) as Tak[]).map(k => `${TAK_LABEL[k]} ${eur2(t[k])}`).join(" + ")}</div>
           <div>Medewerkers {eur2(a.medewerkers)} + niet toegewezen {eur2(a.nietToegewezen)}</div>
-          {po.count > 0 && <div className="text-slate-500">Apart (niet in totaal): poets nog op maandfactuur {po.count} × € 82,64 = {eur2(po.bedrag)}</div>}
+          <div className="text-muted-foreground">Nog op maandfactuur: {po.count} poetsbeurten × € 82,64 = {eur2(po.bedrag)}</div>
         </div>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">

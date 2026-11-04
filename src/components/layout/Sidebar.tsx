@@ -636,6 +636,7 @@ const DirectieSidebar: React.FC<{
 
   const sections: StdSection[] = [
     { label: null, entries: [{ url: "/directie", label: "Cockpit", icon: HomeIcon }] },
+    { label: "KLANTEN", entries: [{ url: "/customers", label: "Alle klanten", icon: UsersIcon }] },
     {
       label: "OPERATIONEEL",
       entries: [

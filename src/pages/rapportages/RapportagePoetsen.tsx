@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RapportagesShell, useRapportageFilters, Block, Stat, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
 import { poetsStats, poetsTracking, downloadCsv, POETS_PRICE_INCL, POETS_PRICE_EXCL } from "@/services/rapportageService";
+import { eur2 } from "@/components/rapportages/OmzetControle";
 
 const dt = (iso: string) => new Date(iso).toLocaleDateString("nl-NL", { day: "2-digit", month: "short", year: "2-digit" });
 
@@ -56,10 +57,11 @@ const RapportagePoetsen: React.FC = () => {
           >
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Intern gepoetst" value={num(stats.internCars, 0)} sub="auto's" />
-              <Stat label="Gefactureerd ex btw" value={eur(stats.invoicedExcl)} sub="poets-maandfactuur" />
+              <Stat label="Poetsomzet live ex btw" value={eur2(stats.revenueExcl)} />
               <Stat label="Nog op maandfactuur" value={eur(stats.openExcl)} sub={`${stats.openCount} beurten × € 82,64`} />
               <Stat label="Extern gepoetst" value={num(stats.externCars, 0)} sub="alleen aantallen — extern factureert zelf" />
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">waarvan {eur2(stats.invoicedExcl)} gefactureerd · {eur2(stats.openExcl)} nog op maandfactuur ({stats.openCount} beurten)</p>
             {stats.unknownCars > 0 && (
               <p className="mt-3 text-[11.5px] text-amber-700">
                 {stats.unknownCars} poetsbeurt(en) zonder gekoppelde poetser — deze tellen niet mee in de omzet.
