@@ -3,7 +3,7 @@ import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { nlDate as nlDayOf, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
-import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
 /** Vaste snelkeuzes + "custom" (eigen van–tot bereik). */
@@ -206,7 +206,7 @@ export const partCount = (o: RapOrder) => {
 };
 
 /** Meetellende omzetregels in [from, to) op omzet_datum. */
-export const regelsIn = (raw: RapRaw, from: Date, to: Date) => inPeriod(raw.bron.regels, dayStr(from), dayStr(to));
+export const regelsIn = (raw: RapRaw, from: Date, to: Date) => omzetLiveRegels(raw.bron, dayStr(from), dayStr(to));
 
 /* ------------------------------ A. Omzet ------------------------------ */
 
@@ -216,9 +216,10 @@ export interface OmzetGroup {
 }
 export interface OmzetStats {
   schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup;
-  /** gefactureerd (schade + werkplaats + poets-facturen) */
+  /** Facturen plus poets nog op maandfactuur. */
   totaal: number;
-  /** interne poetsbeurten die nog niet op een maandfactuur staan — apart, niet in totaal */
+  poetsGefactureerd: number;
+  /** Interne poetsbeurten nog op maandfactuur, inbegrepen in totaal. */
   poetsOpen: { count: number; bedrag: number };
   trend: { month: string; schade: number; werkplaats: number; poets: number; poetsOpen: number; selected: boolean }[];
 }
@@ -230,8 +231,7 @@ const toGroup = (d: TakDetail): OmzetGroup => ({
 
 /**
  * BRON: public.omzet_regels (één bron voor alle schermen). Gegroepeerd op omzet_datum (NL),
- * tak per factuur. Poets = gefactureerde poetsregels; afgeronde interne beurten die nog niet op
- * een maandfactuur staan worden apart getoond als "nog op maandfactuur".
+ * tak per factuur. Poets bevat ook afgeronde interne beurten nog op maandfactuur.
  */
 export function omzetGroups(raw: RapRaw, from: Date, to: Date): { schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup } {
   const d = takDetails(regelsIn(raw, from, to));
@@ -252,6 +252,7 @@ export function omzetStats(raw: RapRaw): OmzetStats {
   return {
     schade, werkplaats, poets, totaal: Math.round((schade.total + werkplaats.total + poets.total) * 100) / 100,
     poetsOpen: { count: po.count, bedrag: po.bedrag }, trend,
+    poetsGefactureerd: takTotals(inPeriod(raw.bron.regels, dayStr(raw.from), dayStr(raw.to))).poets,
   };
 }
 
@@ -560,7 +561,7 @@ export interface PoetsStats {
 const poetsDoneAt = (o: RapOrder) => o.finished_at || o.approved_at || o.created_at;
 /** Poets-omzet in [a,b): gefactureerde poetsregels + interne beurten nog op maandfactuur. */
 const poetsRevenue = (raw: RapRaw, a: Date, b: Date) => {
-  const inv = takTotals(regelsIn(raw, a, b)).poets;
+  const inv = takTotals(inPeriod(raw.bron.regels, dayStr(a), dayStr(b))).poets;
   const open = poetsNogOpMaandfactuur(raw.bron, dayStr(a), dayStr(b));
   return { invoiced: inv, open: open.bedrag, openCount: open.count, total: Math.round((inv + open.bedrag) * 100) / 100 };
 };

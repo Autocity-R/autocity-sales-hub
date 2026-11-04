@@ -1,9 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { linkedOrderIds, nlDate, type OmzetRegel } from "@/lib/omzet";
+import { linkedOrderIds, nlDate, nlDayStart, pendingPoets, liveOmzetRegels, type OmzetRegel, type PoetsBeurt } from "@/lib/omzet";
 
 /** Interne poetsbeurt: € 100,00 incl. btw = € 82,64 excl. btw. */
-export const POETS_PRICE_EXCL = 82.64;
+export { POETS_PRICE_EXCL, type PoetsBeurt } from "@/lib/omzet";
 
 export interface InvoiceLink {
   id: string; invoice_number: string | null; invoice_kind: string | null; status: string | null;
@@ -11,7 +11,6 @@ export interface InvoiceLink {
   telt_niet_mee: boolean | null; telt_niet_mee_reden: string | null; tak: string | null;
   omzet_datum: string | null; created_at: string; customer: any; vehicle: any;
 }
-export interface PoetsBeurt { id: string; day: string; assigned_to: string | null; vehicle_id: string | null; branch: string | null; intern: boolean | null }
 export interface ExternOpen {
   id: string; approved_at: string | null; discipline: string | null; klant: string | null; vehicle_id: string | null;
   kenteken: string | null; branch: string | null; assigned_to: string | null;
@@ -35,6 +34,7 @@ export const dayStr = (d: Date) => `${d.getFullYear()}-${d2(d.getMonth() + 1)}-$
 export async function fetchOmzetBron(from: Date, to: Date, branch: string): Promise<OmzetBron> {
   const van = dayStr(from), tot = dayStr(to);
   const pBranch = branch === "all" ? null : branch;
+  const start = nlDayStart(van), end = nlDayStart(tot);
 
   const [regels, links, poets, ext, profiles] = await Promise.all([
     fetchAllPages<OmzetRegel>((a, b) => (supabase as any)
@@ -46,7 +46,7 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
     fetchAllPages<any>((a, b) => {
       let q = supabase.from("work_orders").select("id,assigned_to,vehicle_id,branch,finished_at,approved_at")
         .eq("discipline", "poets").in("status", ["afgerond", "goedgekeurd"])
-        .gte("created_at", new Date(+from - 120 * 86400000).toISOString());
+        .or(`and(finished_at.gte.${start},finished_at.lt.${end}),and(finished_at.is.null,approved_at.gte.${start},approved_at.lt.${end})`);
       if (pBranch) q = q.eq("branch", pBranch);
       return q.order("id").range(a, b);
     }),
@@ -56,10 +56,10 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
       if (pBranch) q = q.eq("branch", pBranch);
       return q.order("id").range(a, b);
     }),
-    supabase.from("profiles").select("id,poetser_type"),
+    fetchAllPages<{ id: string; poetser_type: string | null }>((a, b) => supabase.from("profiles").select("id,poetser_type").order("id").range(a, b)),
   ]);
 
-  const poetsType = new Map((profiles.data || []).map((p: any) => [p.id, p.poetser_type]));
+  const poetsType = new Map(profiles.map(p => [p.id, p.poetser_type]));
   const poetsGefactureerd = new Set<string>();
   const linked = new Set<string>();
   links.forEach(i => linkedOrderIds(i.source_work_order_ids, i.work_order_id).forEach(id => {
@@ -72,7 +72,7 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
     .filter(({ at }) => at)
     .map(({ o, at }) => ({
       id: o.id, day: nlDate(at), assigned_to: o.assigned_to, vehicle_id: o.vehicle_id, branch: o.branch,
-      intern: o.assigned_to ? poetsType.get(o.assigned_to) !== "extern" : null,
+      intern: o.assigned_to && poetsType.has(o.assigned_to) ? (poetsType.get(o.assigned_to) ?? "intern") === "intern" : null,
     }))
     .filter(b => b.day >= van && b.day < tot);
 
@@ -99,9 +99,10 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
 
 /** Interne poetsbeurten die nog niet op een maandfactuur staan (× € 82,64) in [van, tot). */
 export function poetsNogOpMaandfactuur(bron: OmzetBron, van: string, tot: string) {
-  const list = bron.poetsBeurten.filter(b => b.intern === true && !bron.poetsGefactureerd.has(b.id) && b.day >= van && b.day < tot);
-  return { count: list.length, bedrag: Math.round(list.length * POETS_PRICE_EXCL * 100) / 100, list };
+  return pendingPoets(bron.poetsBeurten, bron.poetsGefactureerd, van, tot);
 }
+export const omzetLiveRegels = (bron: OmzetBron, van: string, tot: string) =>
+  liveOmzetRegels(bron.regels, bron.poetsBeurten, bron.poetsGefactureerd, van, tot);
 /** Poetsbeurten zonder uitvoerder die nergens gefactureerd zijn (controlelijst). */
 export const poetsZonderUitvoerder = (bron: OmzetBron, van: string, tot: string) =>
   bron.poetsBeurten.filter(b => !b.assigned_to && !bron.poetsGefactureerd.has(b.id) && b.day >= van && b.day < tot);

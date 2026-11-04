@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount } from "@/lib/performanceGroups";
 import { inPeriod, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
-import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 
 export type DirectiePeriod = "week" | "month" | "quarter" | "year";
 export type DirectieBranch = "all" | "rotterdam" | "heerhugowaard";
@@ -137,7 +137,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
 
 /* ---------- afgeleide berekeningen (bron: omzet_regels) ---------- */
 
-export const regelsIn = (raw: DirectieRaw, from: Date, to: Date) => inPeriod(raw.bron.regels, dayStr(from), dayStr(to));
+export const regelsIn = (raw: DirectieRaw, from: Date, to: Date) => omzetLiveRegels(raw.bron, dayStr(from), dayStr(to));
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
 /** Uren = fairSeconds per medewerker (interval-unie, alleen binnen werktijd) van klaar-gemelde orders. */
@@ -156,6 +156,7 @@ export interface KernCijfers {
   total: number; intern: number; extern: number;
   schade: number; werkplaats: number; poets: number;
   poetsOpen: { count: number; bedrag: number };
+  poetsGefactureerd: number;
 }
 export function kernCijfers(raw: DirectieRaw, from: Date, to: Date): KernCijfers {
   const regels = regelsIn(raw, from, to);
@@ -169,6 +170,7 @@ export function kernCijfers(raw: DirectieRaw, from: Date, to: Date): KernCijfers
     extern: r2(d.schadeherstel.extern + d.werkplaats.extern + d.poets.extern),
     schade: t.schadeherstel, werkplaats: t.werkplaats, poets: t.poets,
     poetsOpen: { count: po.count, bedrag: po.bedrag },
+    poetsGefactureerd: takTotals(inPeriod(raw.bron.regels, dayStr(from), dayStr(to))).poets,
   };
 }
 
