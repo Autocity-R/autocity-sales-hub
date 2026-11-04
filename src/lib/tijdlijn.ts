@@ -90,6 +90,13 @@ export function filterOpCategorie(events: TijdlijnEvent[], filter: TijdlijnCateg
   return events.filter(e => e.categorie === filter);
 }
 
+/** Datumveld zonder tijd (yyyy-MM-dd) veilig tonen; ISO-momenten gaan via NL-tijd. */
+export function nlDateSafe(d: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return formatEventTs(d, false);
+}
+
 /** Hele dagen tussen twee momenten (NL-kalenderdagen). */
 export function dagenTussen(van: string | Date, tot: string | Date): number {
   const a = dagKey(typeof van === "string" ? van : van.toISOString());
