@@ -518,6 +518,7 @@ export const WarrantyReports = ({ period }: WarrantyReportsProps) => {
                   return (
                     <TableRow key={claim.id}>
                       <TableCell>
+                        <ClaimNumber number={claim.claimNummer} claimId={claim.id} />
                         <div className="font-medium">
                           {claim.vehicleBrand} {claim.vehicleModel}
                         </div>
