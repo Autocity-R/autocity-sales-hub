@@ -1,0 +1,2 @@
+GRANT EXECUTE ON FUNCTION public.voertuig_open_punten(uuid) TO supabase_read_only_user;
+DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='warranty_claim_wijzigingen_door_fkey') THEN ALTER TABLE public.warranty_claim_wijzigingen ADD CONSTRAINT warranty_claim_wijzigingen_door_fkey FOREIGN KEY(door) REFERENCES public.profiles(id) ON DELETE SET NULL; END IF; END $$;

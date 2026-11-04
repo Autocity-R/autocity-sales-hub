@@ -188,7 +188,7 @@ serve(async (req) => {
       if (wo.warranty_claim_id) {
         const { data: c } = await admin
           .from("warranty_claims")
-          .select("id, description, loan_car_id, manual_license_number, manual_vehicle_brand, manual_vehicle_model, manual_customer_name")
+          .select("id, description, loan_car_id, manual_license_number, manual_vehicle_brand, manual_vehicle_model, manual_customer_name, manual_customer_phone, manual_customer_email, claim_contact_naam, claim_contact_telefoon, claim_contact_email, customer:contacts!warranty_claims_customer_id_fkey(company_name,first_name,last_name,phone,email)")
           .eq("id", wo.warranty_claim_id)
           .maybeSingle();
         claim = c;
@@ -211,7 +211,7 @@ serve(async (req) => {
         "Voertuig";
       const who = wo.origin === "extern" && ext.name
         ? ext.name
-        : (claim?.manual_customer_name
+        : (claim?.claim_contact_naam || claim?.customer?.company_name || [claim?.customer?.first_name,claim?.customer?.last_name].filter(Boolean).join(' ') || claim?.manual_customer_name
           || (wo.description ? String(wo.description).slice(0, 40) : "Werkplaats"));
 
       let assignedName = "niet toegewezen";
@@ -229,6 +229,9 @@ serve(async (req) => {
       ];
       if (claim) {
         descriptionLines.push(`Garantieclaim: ${claim.description || "-"}`);
+        descriptionLines.push(`Klant: ${who}`);
+        descriptionLines.push(`Telefoon: ${claim.claim_contact_telefoon ?? claim.customer?.phone ?? claim.manual_customer_phone ?? '-'}`);
+        descriptionLines.push(`E-mail: ${claim.claim_contact_email ?? claim.customer?.email ?? claim.manual_customer_email ?? '-'}`);
         if (loanCarLabel) descriptionLines.push(`Leenauto: ${loanCarLabel}`);
       }
       if (wo.origin === "extern") {

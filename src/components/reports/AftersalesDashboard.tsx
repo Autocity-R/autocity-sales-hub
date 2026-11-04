@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -523,6 +524,7 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                       {openWarrantyClaims.map((claim) => (
                         <tr key={claim.id} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                           <td className="py-3">
+                            <ClaimNumber claimId={claim.id} />
                             <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
                             <div className="text-sm text-muted-foreground">{claim.licensePlate || 'Geen kenteken'}</div>
                           </td>
@@ -577,6 +579,7 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                       {resolvedWarrantyClaims.map((claim) => (
                         <tr key={claim.id} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                           <td className="py-3">
+                            <ClaimNumber claimId={claim.id} />
                             <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
                             <div className="text-sm text-muted-foreground">{claim.licensePlate || 'Geen kenteken'}</div>
                           </td>

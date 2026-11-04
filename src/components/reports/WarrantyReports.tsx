@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -518,6 +519,7 @@ export const WarrantyReports = ({ period }: WarrantyReportsProps) => {
                   return (
                     <TableRow key={claim.id}>
                       <TableCell>
+                        <ClaimNumber number={claim.claimNummer} claimId={claim.id} />
                         <div className="font-medium">
                           {claim.vehicleBrand} {claim.vehicleModel}
                         </div>

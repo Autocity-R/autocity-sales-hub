@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import React, { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -204,7 +205,7 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
             {/* Badges */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {workOrder.is_rush && <AsPill tone="red">⚡ SPOED</AsPill>}
-              {workOrder.warranty_claim_id && <AsPill tone="violet">🛡️ GARANTIE</AsPill>}
+              {workOrder.warranty_claim_id && <AsPill tone="violet">🛡️ <ClaimNumber claimId={workOrder.warranty_claim_id} /></AsPill>}
               {isExtern && <AsPill tone="amber">EXTERN{ext.name ? ` · ${ext.name}` : ""}</AsPill>}
               {workOrder.status && <AsPill tone="slate">{workOrder.status}</AsPill>}
             </div>

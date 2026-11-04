@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
 import { sendPush, AFTERSALES_ROLES } from "../_shared/push.ts";
+import { resolveClaimReference } from '../_shared/garantieClaimReference.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -162,7 +163,12 @@ async function syncSentMessages(
           .maybeSingle();
         if (refEmail?.thread_id) { threadId = refEmail.thread_id; break; }
       }
-      if (!threadId) {
+      const reference = await resolveClaimReference(supabase, `${subject}\n${body}`, recipients);
+      if (!threadId && reference.claimId) {
+        const { data: matching } = await supabase.from('garantie_email_threads').select('id').eq('warranty_claim_id', reference.claimId).in('klant_email', recipients).order('laatste_email_op', { ascending: false }).limit(1).maybeSingle();
+        threadId = matching?.id || null;
+      }
+      if (!threadId && !reference.explicit) {
         const { data: thread } = await supabase
           .from('garantie_email_threads')
           .select('id')
@@ -416,8 +422,13 @@ serve(async (req) => {
           if (existingEmail) threadId = existingEmail.thread_id;
         }
 
-        // Check 2: Zelfde afzender met open thread
-        if (!threadId) {
+        const reference = await resolveClaimReference(supabase, `${subject}\n${body}`, [senderEmail]);
+        if (!threadId && reference.claimId) {
+          const { data: matching } = await supabase.from('garantie_email_threads').select('id').eq('warranty_claim_id', reference.claimId).eq('klant_email', senderEmail).order('laatste_email_op', { ascending: false }).limit(1).maybeSingle();
+          threadId = matching?.id || null;
+        }
+        // Check 2: Zelfde afzender met open thread (niet bij conflicterende expliciete referentie)
+        if (!threadId && !reference.explicit) {
           const { data: existingThread } = await supabase
             .from('garantie_email_threads')
             .select('id')
@@ -441,6 +452,7 @@ serve(async (req) => {
               laatste_email_op: receivedAt,
               aantal_emails: 0,
               thread_status: 'open',
+              warranty_claim_id: reference.claimId,
             })
             .select('id')
             .single();
@@ -449,7 +461,8 @@ serve(async (req) => {
             console.error(`❌ Thread aanmaken mislukt:`, threadError.message);
             continue;
           }
-          threadId = newThread!.id;
+          if (!newThread) continue;
+          threadId = newThread.id;
           console.log(`🆕 Nieuwe thread aangemaakt: ${threadId}`);
         }
 

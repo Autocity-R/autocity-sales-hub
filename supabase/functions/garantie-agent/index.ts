@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveClaimReference } from '../_shared/garantieClaimReference.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,6 +110,10 @@ async function loadContext(supabase: any, threadId: string) {
 
   // ── Claim ──
   let claim: any = null;
+  if (thread && !thread.warranty_claim_id) {
+    const reference = await resolveClaimReference(supabase, [thread.onderwerp, ...(emails || []).map((e: any) => `${e.subject || ''}\n${e.body || ''}`)].join('\n'), [thread.klant_email || '']);
+    if (reference.claimId) thread.warranty_claim_id = reference.claimId;
+  }
   if (thread?.warranty_claim_id) {
     const { data: c } = await supabase
       .from("warranty_claims")

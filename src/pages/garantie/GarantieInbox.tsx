@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -50,6 +51,7 @@ interface Email {
 }
 
 interface Claim {
+  claim_nummer?: string;
   id: string; claim_status: string; description: string | null; created_at: string;
   vehicle_id: string | null; manual_vehicle_brand: string | null; manual_vehicle_model: string | null;
   manual_license_number: string | null;
@@ -712,6 +714,7 @@ const GarantieInbox: React.FC = () => {
                 <div className="bg-white border border-slate-200 rounded-lg p-3 text-[12px]">
                   {claim ? (
                     <div className="space-y-1">
+                      <ClaimNumber number={claim.claim_nummer} claimId={claim.id} />
                       <div className="flex items-center gap-2">
                         <AsPill tone={claim.claim_status === "resolved" ? "green" : "amber"}>{claim.claim_status}</AsPill>
                         <span className="text-slate-400">· {formatDistanceToNow(new Date(claim.created_at), { addSuffix: true, locale: nl })}</span>

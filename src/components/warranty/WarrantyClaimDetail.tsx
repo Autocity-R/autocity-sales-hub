@@ -1,5 +1,7 @@
 
 import React, { useState } from "react";
+import { ClaimNumber } from './ClaimNumber';
+import { ClaimContactEditor } from './ClaimContactEditor';
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,13 +75,15 @@ interface WarrantyClaimDetailProps {
 }
 
 export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
-  claim,
+  claim: originalClaim,
   isOpen,
   onClose,
   onUpdate,
   onResolve,
   onDelete
 }) => {
+  const [contactUpdates, setContactUpdates] = useState<Partial<WarrantyClaim>>({});
+  const claim = { ...originalClaim, ...contactUpdates };
   const { canManageWarrantyClaims, canDeleteWarrantyClaims, userRole, isAdmin } = useRoleAccess();
   const canLendLoanCar = isAdmin || canWriteLeenautoRole(userRole);
   const canManageClaims = canManageWarrantyClaims();
@@ -297,7 +301,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>Garantieclaim #{claim.id}</span>
+              <span className="flex flex-wrap items-center gap-1">Garantieclaim <ClaimNumber number={claim.claimNummer} claimId={claim.id} /></span>
               <div className="flex gap-2 items-center">
                 <WarrantyScheduleAction claimId={claim.id} />
                 {getStatusBadge(claim.status)}
@@ -634,6 +638,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           )}
 
           {/* Acties */}
+          <ClaimContactEditor claim={claim} onSaved={setContactUpdates} />
           {(canManageClaims || canDeleteClaims) && (
           <div className="flex gap-2 pt-4 justify-between flex-wrap">
             <div className="flex gap-2 flex-wrap">

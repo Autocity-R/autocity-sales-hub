@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -118,6 +119,7 @@ const OrderCard: React.FC<{ o: any; after?: boolean; onOpenClaim: (id: string) =
         {garantie && (
           <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border bg-blue-50 text-blue-800 border-blue-200 font-normal">
             <ShieldCheck className="h-3 w-3" />Garantie{o.warranty_claim_id ? ` · ${claimStatusLabel(o.claim_status)}` : ""}
+            {o.warranty_claim_id && <ClaimNumber number={o.claim_nummer} claimId={o.warranty_claim_id} />}
           </span>
         )}
         {o.via_ander_record && (
@@ -197,6 +199,7 @@ const WorkOrderHistory: React.FC<{
                 <li key={c.id} className="rounded-md border p-3 text-sm">
                   <div className="flex flex-wrap items-center gap-1.5 font-medium">
                     <span className="text-muted-foreground font-normal">{day(c.created_at)} ·</span>
+                    <ClaimNumber number={c.claim_nummer} claimId={c.id} />
                     <span className={cn("text-xs px-1.5 py-0.5 rounded border font-normal", isOpenClaim(c.claim_status) ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-muted text-muted-foreground border-border")}>
                       {claimStatusLabel(c.claim_status)}
                     </span>

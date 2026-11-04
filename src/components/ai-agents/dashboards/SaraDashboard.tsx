@@ -1,3 +1,4 @@
+import { ClaimNumber } from "@/components/warranty/ClaimNumber";
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,7 +187,7 @@ export const SaraDashboard: React.FC = () => {
               <div key={c.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/30">🟡 Nodig</Badge>
-                  <span className="font-medium">{c.claim_number || c.id.slice(0, 8)}</span>
+                  <ClaimNumber number={c.claim_nummer} claimId={c.id} />
                   <span className="text-muted-foreground">{c.manual_customer_name || 'Onbekend'}</span>
                 </div>
                 <Popover open={linkingClaimId === c.id} onOpenChange={(open) => { setLinkingClaimId(open ? c.id : null); setSelectedCarId(""); }}>
@@ -236,7 +237,7 @@ export const SaraDashboard: React.FC = () => {
             {data.oldClaims.map((c: any) => (
               <div key={c.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{c.claim_number || c.id.slice(0, 8)}</span>
+                  <ClaimNumber number={c.claim_nummer} claimId={c.id} />
                   <Badge variant="destructive">{c.days}d</Badge>
                   {c.loan_car_assigned && !c.loan_car_id && (
                     <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/30">🟡 Leenauto nodig</Badge>

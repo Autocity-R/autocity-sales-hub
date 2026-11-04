@@ -60,12 +60,20 @@ Deno.serve(async (req) => {
 
     const { data: orders, error } = await supabase
       .from("work_orders")
-      .select("id, planned_at, description, parts, part, discipline, external_customer, reminder_for_date, vehicle_id, status")
+      .select("id, planned_at, description, parts, part, discipline, external_customer, reminder_for_date, vehicle_id, status, warranty_claim_id")
       .or("source.eq.extern,origin.eq.extern")
       .in("status", ["ingepland", "bezig"])
       .gte("planned_at", from.toISOString())
       .lte("planned_at", to.toISOString());
     if (error) throw error;
+    // Resolve current claim contact before choosing recipients; do not change reminder scope or copy.
+    for (const o of orders || []) {
+      if (!o.warranty_claim_id) continue;
+      const { data: c } = await supabase.from('warranty_claims').select('claim_contact_naam,claim_contact_telefoon,claim_contact_email,manual_customer_name,manual_customer_phone,manual_customer_email,customer:contacts!warranty_claims_customer_id_fkey(first_name,last_name,company_name,phone,email)').eq('id',o.warranty_claim_id).maybeSingle();
+      if (!c) continue;
+      const ct = c.customer as any;
+      o.external_customer = { ...(o.external_customer as any || {}), name:c.claim_contact_naam ?? ct?.company_name ?? ([ct?.first_name,ct?.last_name].filter(Boolean).join(' ') || c.manual_customer_name), phone:c.claim_contact_telefoon ?? ct?.phone ?? c.manual_customer_phone, email:c.claim_contact_email ?? ct?.email ?? c.manual_customer_email };
+    }
 
     const todo = (orders || []).filter((o: any) => {
       if (!o.planned_at) return false;
