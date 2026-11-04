@@ -18,6 +18,8 @@ import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/worksh
 import { FileText } from "lucide-react";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { NogTeFacturerenExtern } from "@/components/werkplaats/NogTeFacturerenExtern";
+import { externInvoiceDraft } from "@/lib/externFactuur";
 
 interface WO {
   id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
@@ -44,6 +46,23 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
   const [invoice, setInvoice] = useState<InvoiceDraft | null>(null);
+  // Of het factuurvenster na goedkeuren automatisch opende en of er opgeslagen is
+  const invoiceAutoRef = React.useRef(false);
+  const invoiceSavedRef = React.useRef(false);
+
+  const openInvoice = (w: WO, auto = false) => {
+    invoiceAutoRef.current = auto;
+    invoiceSavedRef.current = false;
+    setInvoice(invoiceDraftFor(w));
+  };
+
+  const closeInvoice = () => {
+    if (invoiceAutoRef.current && !invoiceSavedRef.current) {
+      toast({ title: "Nog geen factuur gemaakt", description: "Deze klus staat in Facturen › Nog te factureren." });
+    }
+    invoiceAutoRef.current = false;
+    setInvoice(null);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -61,28 +80,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
 
   const isExtern = (w: WO) => w.origin === "extern";
 
-  const invoiceDraftFor = (w: WO): InvoiceDraft => {
-    const c = (w.external_customer as any) || {};
-    return {
-      work_order_id: w.id,
-      branch: w.branch || "rotterdam",
-      customer: {
-        name: c.name || "",
-        address: c.address || "",
-        street: c.street || "",
-        house_number: c.house_number || "",
-        postal_code: c.postal_code || "",
-        city: c.city || "",
-        email: c.email || "",
-        phone: c.phone || "",
-      },
-      vehicle: {
-        brand: w.vehicle?.brand || "", model: w.vehicle?.model || "",
-        license_number: w.vehicle?.license_number || "", vin: w.vehicle?.vin || null,
-      },
-      lines: [{ description: [getWorkOrderParts(w).join(" · ") || null, w.description].filter(Boolean).join(" — "), amount: 0 }],
-    };
-  };
+  const invoiceDraftFor = (w: WO): InvoiceDraft => externInvoiceDraft(w);
 
   const approve = async (w: WO) => {
     const { data: userRes } = await supabase.auth.getUser();
@@ -108,7 +106,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
           if ((poetsCount ?? 0) > 0) toast({ title: "Auto doorgezet naar Poetsen" });
         }
       }
-      if (isExtern(w)) setInvoice(invoiceDraftFor(w));
+      if (isExtern(w)) openInvoice(w, true);
       // interne facturatie tussen de BV's: de DB maakt de factuur aan, hier alleen PDF + mail
       if (!isExtern(w) && ["werkplaats", "spuit"].includes(w.discipline)) {
         dispatchPendingInternalInvoices()
@@ -167,7 +165,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         right={
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             {isExtern(w) && !readOnly && (
-              <Button size="sm" variant="outline" onClick={() => setInvoice(invoiceDraftFor(w))}>
+              <Button size="sm" variant="outline" onClick={() => openInvoice(w)}>
                 <FileText className="h-4 w-4 mr-1" />Factuur opmaken
               </Button>
             )}
@@ -251,8 +249,17 @@ const WerkplaatsGoedkeuren: React.FC = () => {
             </section>
           </div>
         )}
+        <section className="mt-8">
+          <NogTeFacturerenExtern onChanged={load} />
+        </section>
+
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
-        <WorkshopInvoiceDialog open={!!invoice} onOpenChange={(v) => !v && setInvoice(null)} initial={invoice} />
+        <WorkshopInvoiceDialog
+          open={!!invoice}
+          onOpenChange={(v) => !v && closeInvoice()}
+          initial={invoice}
+          onSaved={() => { invoiceSavedRef.current = true; }}
+        />
       </AsPage>
     </DashboardLayout>
   );
