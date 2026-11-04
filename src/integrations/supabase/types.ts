@@ -5709,6 +5709,32 @@ export type Database = {
         }
         Returns: undefined
       }
+      garantie_klant_zoeken: {
+        Args: { p_query: string }
+        Returns: {
+          additional_emails: Json | null
+          address_city: string | null
+          address_number: string | null
+          address_postal_code: string | null
+          address_street: string | null
+          company_name: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          is_car_dealer: boolean
+          last_name: string
+          phone: string | null
+          type: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "contacts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       garantie_werkorder_inplannen: {
         Args: {
           p_assigned_to?: string
