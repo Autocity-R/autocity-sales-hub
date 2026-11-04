@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { featureAccess } from "@/lib/routeAccess";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { countsAsRevenue, nlDate } from "@/lib/omzet";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr } from "@/services/omzetService";
 import { buildHaystack, matchesSearch, amountTokens } from "@/lib/searchNormalize";
 import {
   eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
@@ -36,7 +37,8 @@ const WerkplaatsFacturen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<InvoiceDraft | null>(null);
-  const [tab, setTab] = useState<"intern" | "extern">("extern");
+  const [tab, setTab] = useState<"intern" | "extern" | "poets">("extern");
+  const [poetsOpen, setPoetsOpen] = useState({ count: 0, bedrag: 0 });
 
   const load = async () => {
     setLoading(true);
@@ -47,6 +49,12 @@ const WerkplaatsFacturen: React.FC = () => {
         .order("created_at", { ascending: false })
         .range(a, b));
       setRows(data);
+      const now = new Date();
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const bron = await fetchOmzetBron(from, to, "all");
+      const open = poetsNogOpMaandfactuur(bron, dayStr(from), dayStr(to));
+      setPoetsOpen({ count: open.count, bedrag: open.bedrag });
     } catch (error: any) {
       toast({ title: "Fout", description: error.message, variant: "destructive" });
       setRows([]);
@@ -75,7 +83,7 @@ const WerkplaatsFacturen: React.FC = () => {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    const base = rows.filter((r) => (r.invoice_kind === "intern" ? "intern" : "extern") === tab);
+    const base = rows.filter((r) => (r.invoice_kind === "poets_intern" ? "poets" : r.invoice_kind === "intern" ? "intern" : "extern") === tab);
     if (!s) return base;
     return base.filter((r) => {
       const c = r.customer || {};
@@ -158,12 +166,13 @@ const WerkplaatsFacturen: React.FC = () => {
           {[
             { label: "Intern deze maand (excl. btw)", v: eur(monthTotals.intern) },
             { label: "Extern deze maand (excl. btw)", v: eur(monthTotals.extern) },
-            { label: "Poets deze maand (excl. btw)", v: eur(monthTotals.poets) },
+            { label: "Poets gefactureerd deze maand", v: eur(monthTotals.poets), sub: `+ ${eur(poetsOpen.bedrag)} nog op maandfactuur (${poetsOpen.count} beurten, factuur volgt op de 1e)` },
             { label: "Handmatige concepten (tellen niet mee)", v: `${monthTotals.concepten.length} · ${eur(monthTotals.concepten.reduce((s, r) => s + (Number(r.subtotal) || 0), 0))}` },
           ].map((x) => (
             <div key={x.label} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
               <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">{x.label}</div>
               <div className="text-lg font-semibold tabular-nums text-slate-900">{x.v}</div>
+              {x.sub && <div className="mt-1 text-xs text-muted-foreground">{x.sub}</div>}
             </div>
           ))}
         </div>
@@ -182,6 +191,7 @@ const WerkplaatsFacturen: React.FC = () => {
             <div className="flex gap-2">
               <Button size="sm" variant={tab === "extern" ? "default" : "outline"} onClick={() => setTab("extern")}>Extern</Button>
               <Button size="sm" variant={tab === "intern" ? "default" : "outline"} onClick={() => setTab("intern")}>Intern</Button>
+              <Button size="sm" variant={tab === "poets" ? "default" : "outline"} onClick={() => setTab("poets")}>Poets</Button>
             </div>
           </div>
 

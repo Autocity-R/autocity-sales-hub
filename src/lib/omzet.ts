@@ -99,7 +99,7 @@ export function takDetails(regels: OmzetRegel[]): Record<Tak, TakDetail> {
     const d = out[i.tak];
     const amt = Number(i.subtotal || 0);
     d.total += amt; d.invoices += 1;
-    if (["intern", "poets_intern"].includes(i.invoice_kind || "")) d.intern += amt; else d.extern += amt;
+    if (["intern", "poets_intern", "poets_pending"].includes(i.invoice_kind || "")) d.intern += amt; else d.extern += amt;
   });
   counted.forEach(r => { out[r.tak].parts += r.tak === "schadeherstel" ? Number(r.aandeel_delen || 1) : 1; });
   (Object.keys(out) as Tak[]).forEach(k => { out[k].total = r2(out[k].total); out[k].intern = r2(out[k].intern); out[k].extern = r2(out[k].extern); });
@@ -135,3 +135,30 @@ export function aansluiting(regels: OmzetRegel[]): Aansluiting {
 }
 
 export const TAK_LABEL: Record<Tak, string> = { schadeherstel: "Schadeherstel", werkplaats: "Werkplaats", poets: "Poetsen" };
+
+export const POETS_PRICE_EXCL = 82.64;
+export interface PoetsBeurt { id: string; day: string; assigned_to: string | null; vehicle_id: string | null; branch: string | null; intern: boolean | null }
+
+/** NL midnight as an instant, including daylight saving at month boundaries. */
+export function nlDayStart(day: string): string {
+  const noon = new Date(`${day}T12:00:00Z`);
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hour: "2-digit", hourCycle: "h23" }).format(noon));
+  return new Date(Date.parse(`${day}T00:00:00Z`) - (hour - 12) * 3600000).toISOString();
+}
+
+export function pendingPoets(beurten: PoetsBeurt[], invoiced: Set<string>, van: string, tot: string) {
+  const list = beurten.filter(b => !!b.assigned_to && b.intern === true && !invoiced.has(b.id) && b.day >= van && b.day < tot);
+  return { list, count: list.length, bedrag: r2(list.length * POETS_PRICE_EXCL) };
+}
+
+/** Read-only revenue projection: invoice rows plus disjoint pending monthly polishing work. */
+export function liveOmzetRegels(regels: OmzetRegel[], beurten: PoetsBeurt[], invoiced: Set<string>, van: string, tot: string): OmzetRegel[] {
+  const pending = pendingPoets(beurten, invoiced, van, tot);
+  return [...inPeriod(regels, van, tot), ...pending.list.map(b => ({
+    invoice_id: `pending-poets:${b.id}`, invoice_number: null, invoice_kind: "poets_pending", tak: "poets" as const,
+    omzet_datum: b.day, subtotal: POETS_PRICE_EXCL, total: 100, status: "nog_op_maandfactuur", branch: b.branch,
+    created_at: `${b.day}T12:00:00Z`, klant: null, kenteken: null,
+    telt_mee: true, telt_niet_mee: false, telt_niet_mee_reden: null, gekoppeld: true,
+    work_order_id: b.id, discipline: "poets", medewerker_id: b.assigned_to, aandeel_delen: 1, bedrag: POETS_PRICE_EXCL,
+  }))];
+}

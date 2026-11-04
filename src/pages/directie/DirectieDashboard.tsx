@@ -178,10 +178,10 @@ const DirectieDashboard: React.FC = () => {
           <div className="space-y-4">
             {/* A. Kerncijfers */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <Stat label="Totale omzet excl. btw" value={eur2(m.total)} pct={m.dTotal} sub="gefactureerd, op omzetdatum" />
+              <Stat label="Totale omzet excl. btw" value={eur2(m.total)} pct={m.dTotal} sub="inclusief poets nog op maandfactuur" />
               <Stat label="Omzet intern" value={eur2(m.intern)} pct={m.dIntern} />
               <Stat label="Omzet extern" value={eur2(m.extern)} pct={m.dExtern} />
-              <Stat label="Omzet poetsen" value={eur2(m.k.poets)} pct={m.dPoets} sub={m.k.poetsOpen.count ? `+ ${eur2(m.k.poetsOpen.bedrag)} nog op maandfactuur` : "gefactureerd"} />
+              <Stat label="Omzet poetsen" value={eur2(m.k.poets)} pct={m.dPoets} sub={`waarvan ${eur2(m.k.poetsGefactureerd)} gefactureerd · ${eur2(m.k.poetsOpen.bedrag)} nog op maandfactuur (${m.k.poetsOpen.count} beurten)`} />
               <Stat label="Gewerkte uren" value={`${num(m.hours)} u`} pct={m.dHours} sub="binnen werktijd, overlap 1×" />
             </div>
 
@@ -204,8 +204,8 @@ const DirectieDashboard: React.FC = () => {
                   <div key={label} className="rounded-xl border border-slate-200 bg-[#f8f9fb] p-3">
                     <div className="text-[12px] font-semibold text-slate-800">{label}</div>
                     <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
-                      <div><span className="text-slate-500">Intern</span><div className="font-semibold tabular-nums">{eur(s.internal)}</div></div>
-                      <div><span className="text-slate-500">Extern</span><div className="font-semibold tabular-nums">{eur(s.external)}</div></div>
+                      <div><span className="text-slate-500">Intern</span><div className="font-semibold tabular-nums">{eur2(s.internal)}</div></div>
+                      <div><span className="text-slate-500">Extern</span><div className="font-semibold tabular-nums">{eur2(s.external)}</div></div>
                       <div><span className="text-slate-500">Orders</span><div className="font-semibold tabular-nums">{s.count}</div></div>
                       <div><span className="text-slate-500">Gem. per order</span><div className="font-semibold tabular-nums">{eur(s.avg)}</div></div>
                     </div>
@@ -224,7 +224,6 @@ const DirectieDashboard: React.FC = () => {
                     <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]} maxBarSize={24} />
                     <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={24} />
                     <Bar dataKey="poets" name="Poetsen" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={24} />
-                    <Bar dataKey="poetsOpen" name="Poets nog op maandfactuur" fill="#c4b5fd" radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -270,7 +269,7 @@ const DirectieDashboard: React.FC = () => {
                             </td>
                             <td className="py-2 text-right tabular-nums">{e.done}</td>
                             <td className="py-2 text-right tabular-nums">{num(e.hours)}</td>
-                            <td className="py-2 text-right tabular-nums">{eur(e.revenue)}</td>
+                            <td className="py-2 text-right tabular-nums">{eur2(e.revenue)}</td>
                             <td className="py-2 text-right tabular-nums">{eur(e.perHour)}</td>
                             <td className="py-2 text-right tabular-nums">{num(e.rejectPct, 0)}%</td>
                             <td className="py-2 text-right tabular-nums">{Math.round(e.avgMinutes)} min</td>
@@ -386,7 +385,7 @@ const DirectieDashboard: React.FC = () => {
               </div>
             </Block>
 
-            <OmzetControle bron={raw!.bron} van={dayStr(raw!.from)} tot={dayStr(raw!.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />
+            {raw && <OmzetControle bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />}
           </div>
         )}
 

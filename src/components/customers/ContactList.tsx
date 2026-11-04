@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useIsCompact } from "@/hooks/use-mobile";
 import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ContactListProps {
   contacts: Contact[];
@@ -33,6 +34,8 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isCompact = useIsCompact();
+  const { userRole } = useAuth();
+  const mayCreate = userRole !== "operationeel_directeur";
   
   const filteredContacts = contacts.filter(contact => {
     const searchFields = [
@@ -66,13 +69,13 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl md:text-2xl font-semibold">{title}</h2>
-        <Button onClick={() => setIsAddContactOpen(true)} className="min-h-11">
+        {mayCreate && <Button onClick={() => setIsAddContactOpen(true)} className="min-h-11">
           <Plus className="mr-2 h-4 w-4" />
           {type === "supplier" ? "Nieuwe leverancier" : 
            type === "transporter" ? "Nieuwe transporteur" :
            type === "b2b" ? "Nieuwe B2B klant" : 
            type === "b2c" ? "Nieuwe B2C klant" : "Nieuw contact"}
-        </Button>
+        </Button>}
       </div>
       
       <div className="relative">
@@ -187,7 +190,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
       </div>
       )}
       
-      <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
+      <Dialog open={mayCreate && isAddContactOpen} onOpenChange={setIsAddContactOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
           <ScrollArea className="max-h-[calc(90vh-80px)] pr-4">
             <ContactForm 

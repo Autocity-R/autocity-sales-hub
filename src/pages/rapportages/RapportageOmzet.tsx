@@ -44,18 +44,16 @@ const RapportageOmzet: React.FC = () => {
         <div className="space-y-3"><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>
       ) : (
         <div className="space-y-4">
-          <Block title="Totale omzet" icon={<Euro className="h-4 w-4 text-emerald-600" />} sub="gefactureerd: schadeherstel + werkplaats + poetsen (excl. btw), op omzetdatum">
+          <Block title="Totale omzet" icon={<Euro className="h-4 w-4 text-emerald-600" />} sub="schadeherstel + werkplaats + poetsen live (excl. btw), op omzetdatum">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Totaal" value={<span data-testid="omzet-totaal">{eur2(stats.totaal)}</span>} />
               <Stat label="Schadeherstel" value={<span data-testid="omzet-schade">{eur2(stats.schade.total)}</span>} />
               <Stat label="Werkplaats" value={<span data-testid="omzet-werkplaats">{eur2(stats.werkplaats.total)}</span>} />
-              <Stat label="Poetsen (gefactureerd)" value={<span data-testid="omzet-poets">{eur2(stats.poets.total)}</span>} />
+              <Stat label="Poetsen" value={<span data-testid="omzet-poets">{eur2(stats.poets.total)}</span>} />
             </div>
-            {stats.poetsOpen.count > 0 && (
-              <p className="mt-2 text-[11.5px] text-slate-600" data-testid="omzet-poets-open">
-                Daarnaast nog op maandfactuur (poets): {stats.poetsOpen.count} × € 82,64 = <b>{eur2(stats.poetsOpen.bedrag)}</b> — niet in het totaal.
+            <p className="mt-2 text-[11.5px] text-muted-foreground" data-testid="omzet-poets-open">
+                waarvan {eur2(stats.poetsGefactureerd)} gefactureerd · {eur2(stats.poetsOpen.bedrag)} nog op maandfactuur ({stats.poetsOpen.count} beurten)
               </p>
-            )}
           </Block>
           <GroupBlock
             title="🎨 Schadeherstel"
@@ -80,16 +78,16 @@ const RapportageOmzet: React.FC = () => {
           <Block
             title="✨ Poetsen"
             icon={<Sparkles className="h-4 w-4 text-cyan-600" />}
-            sub="poets-maandfactuur (excl. btw) op de werkdag van de beurten; interne beurten zonder maandfactuur apart"
+            sub={`waarvan ${eur2(stats.poetsGefactureerd)} gefactureerd · ${eur2(stats.poetsOpen.bedrag)} nog op maandfactuur (${stats.poetsOpen.count} beurten)`}
             onExport={() => downloadCsv(`omzet-poetsen-${rangeSlug}.csv`, [{
-              periode: rangeSlug, vestiging: branch, gefactureerd_ex_btw: stats.poets.total,
+              periode: rangeSlug, vestiging: branch, omzet_ex_btw: stats.poets.total, gefactureerd_ex_btw: stats.poetsGefactureerd,
               nog_op_maandfactuur_beurten: stats.poetsOpen.count, nog_op_maandfactuur_ex_btw: stats.poetsOpen.bedrag,
             }])}
           >
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat label="Gefactureerd (ex btw)" value={eur(stats.poets.total)} pct={delta(stats.poets.total, prevPoets.total)} />
+              <Stat label="Poetsomzet live (ex btw)" value={eur2(stats.poets.total)} pct={delta(stats.poets.total, prevPoets.total)} />
               <Stat label="Nog op maandfactuur" value={eur(stats.poetsOpen.bedrag)} sub={`${stats.poetsOpen.count} beurten × € 82,64`} />
-              <Stat label="Gefactureerde beurten" value={num(stats.poets.parts, 0)} />
+              <Stat label="Beurten" value={num(stats.poets.parts, 0)} />
               <Stat label="Omzet per beurt" value={eur(stats.poets.avgPerPart)} />
             </div>
           </Block>
@@ -119,14 +117,13 @@ const RapportageOmzet: React.FC = () => {
                     <Bar dataKey="poets" name="Poetsen" fill="#0891b2" radius={[4, 4, 0, 0]}>
                       {stats.trend.map((t, i) => <Cell key={i} fill="#0891b2" fillOpacity={t.selected ? 1 : 0.35} />)}
                     </Bar>
-                    <Bar dataKey="poetsOpen" name="Poets nog op maandfactuur" fill="#67e8f9" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
           </Block>
 
-          <OmzetControle bron={raw!.bron} van={dayStr(raw!.from)} tot={dayStr(raw!.to)} label={rangeLabel} />
+          {raw && <OmzetControle bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={rangeLabel} />}
 
           <p className="text-[11px] text-slate-500">
             Perioden met minder dan {MIN_N} observaties tonen "nog onvoldoende data" in plaats van een gemiddelde.

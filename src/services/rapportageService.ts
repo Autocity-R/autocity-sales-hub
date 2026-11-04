@@ -2,8 +2,8 @@ import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
 import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { nlDate as nlDayOf, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
-import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
+import { nlDate as nlDayOf, nlDayStart, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
 /** Vaste snelkeuzes + "custom" (eigen van–tot bereik). */
@@ -159,7 +159,8 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
 
   const [bron, orders, intakes, vehicles, profiles] = await Promise.all([
     fetchOmzetBron(histStart, histEnd, branch),
-    fetchAllPages<RapOrder>((a, b) => bf(supabase.from("work_orders").select(woSel).gte("created_at", woStart.toISOString()), branch).order("id").range(a, b)),
+    fetchAllPages<RapOrder>((a, b) => bf(supabase.from("work_orders").select(woSel)
+      .or(`created_at.gte.${woStart.toISOString()},and(discipline.eq.poets,finished_at.gte.${nlDayStart(dayStr(histStart))},finished_at.lt.${nlDayStart(dayStr(histEnd))}),and(discipline.eq.poets,finished_at.is.null,approved_at.gte.${nlDayStart(dayStr(histStart))},approved_at.lt.${nlDayStart(dayStr(histEnd))})`), branch).order("id").range(a, b)),
     fetchAllPages<RapIntake>((a, b) => bf(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", histStart.toISOString()), branch).order("id").range(a, b)),
     fetchAllPages<RapVehicle>((a, b) => bf(supabase.from("vehicles").select("id,branch,status,aangekomen_at,sold_date,delivery_date,b2b_delivered_at,details").gte("updated_at", histStart.toISOString()), branch).order("id").range(a, b)),
     supabase.from("profiles").select("id,first_name,last_name,poetser_type,actief"),
@@ -206,7 +207,7 @@ export const partCount = (o: RapOrder) => {
 };
 
 /** Meetellende omzetregels in [from, to) op omzet_datum. */
-export const regelsIn = (raw: RapRaw, from: Date, to: Date) => inPeriod(raw.bron.regels, dayStr(from), dayStr(to));
+export const regelsIn = (raw: RapRaw, from: Date, to: Date) => omzetLiveRegels(raw.bron, dayStr(from), dayStr(to));
 
 /* ------------------------------ A. Omzet ------------------------------ */
 
@@ -216,9 +217,10 @@ export interface OmzetGroup {
 }
 export interface OmzetStats {
   schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup;
-  /** gefactureerd (schade + werkplaats + poets-facturen) */
+  /** Facturen plus poets nog op maandfactuur. */
   totaal: number;
-  /** interne poetsbeurten die nog niet op een maandfactuur staan — apart, niet in totaal */
+  poetsGefactureerd: number;
+  /** Interne poetsbeurten nog op maandfactuur, inbegrepen in totaal. */
   poetsOpen: { count: number; bedrag: number };
   trend: { month: string; schade: number; werkplaats: number; poets: number; poetsOpen: number; selected: boolean }[];
 }
@@ -230,8 +232,7 @@ const toGroup = (d: TakDetail): OmzetGroup => ({
 
 /**
  * BRON: public.omzet_regels (één bron voor alle schermen). Gegroepeerd op omzet_datum (NL),
- * tak per factuur. Poets = gefactureerde poetsregels; afgeronde interne beurten die nog niet op
- * een maandfactuur staan worden apart getoond als "nog op maandfactuur".
+ * tak per factuur. Poets bevat ook afgeronde interne beurten nog op maandfactuur.
  */
 export function omzetGroups(raw: RapRaw, from: Date, to: Date): { schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup } {
   const d = takDetails(regelsIn(raw, from, to));
@@ -252,6 +253,7 @@ export function omzetStats(raw: RapRaw): OmzetStats {
   return {
     schade, werkplaats, poets, totaal: Math.round((schade.total + werkplaats.total + poets.total) * 100) / 100,
     poetsOpen: { count: po.count, bedrag: po.bedrag }, trend,
+    poetsGefactureerd: takTotals(inPeriod(raw.bron.regels, dayStr(raw.from), dayStr(raw.to))).poets,
   };
 }
 
@@ -557,10 +559,10 @@ export interface PoetsStats {
   rows: PoetsTrackRow[];
 }
 
-const poetsDoneAt = (o: RapOrder) => o.finished_at || o.approved_at || o.created_at;
+const poetsDoneAt = (o: RapOrder) => o.finished_at || o.approved_at || null;
 /** Poets-omzet in [a,b): gefactureerde poetsregels + interne beurten nog op maandfactuur. */
 const poetsRevenue = (raw: RapRaw, a: Date, b: Date) => {
-  const inv = takTotals(regelsIn(raw, a, b)).poets;
+  const inv = takTotals(inPeriod(raw.bron.regels, dayStr(a), dayStr(b))).poets;
   const open = poetsNogOpMaandfactuur(raw.bron, dayStr(a), dayStr(b));
   return { invoiced: inv, open: open.bedrag, openCount: open.count, total: Math.round((inv + open.bedrag) * 100) / 100 };
 };
@@ -579,18 +581,18 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
     return n || "Niet toegewezen";
   };
 
-  const done = raw.orders.filter(o => o.discipline === "poets" && isDone(o));
-  const inDays = (o: RapOrder, a: Date, b: Date) => { const d = nlDayOf(poetsDoneAt(o)); return d >= dayStr(a) && d < dayStr(b); };
+  const done = raw.orders.filter(o => o.discipline === "poets" && isDone(o) && poetsDoneAt(o));
+  const inDays = (o: RapOrder, a: Date, b: Date) => { const at = poetsDoneAt(o); if (!at) return false; const d = nlDayOf(at); return d >= dayStr(a) && d < dayStr(b); };
   const inPeriod = done.filter(o => inDays(o, from, to));
 
   const rows: PoetsTrackRow[] = inPeriod
     .map(o => {
-      const d = new Date(poetsDoneAt(o));
+      const d = new Date(poetsDoneAt(o) || "");
       const v = o.vehicle_id ? raw.vehicleInfo[o.vehicle_id] : undefined;
       return {
         id: o.id,
         date: d.toISOString(),
-        monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        monthKey: nlDayOf(d).slice(0, 7),
         plate: v?.license_number || "—",
         vehicle: [v?.brand, v?.model].filter(Boolean).join(" ") || "—",
         poetserId: o.assigned_to,

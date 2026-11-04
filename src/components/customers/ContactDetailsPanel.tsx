@@ -10,6 +10,8 @@ import ContactEmailManager from "./ContactEmailManager";
 import { updateContact } from "@/services/customerService";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { canEditContact } from "@/lib/customerPermissions";
 
 interface ContactDetailsPanelProps {
   contact: Contact;
@@ -18,6 +20,8 @@ interface ContactDetailsPanelProps {
 
 const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const { userRole } = useAuth();
+  const mayEdit = canEditContact(userRole, contact.type);
 
   const handleEditSuccess = (updated: Contact) => {
     setIsEditing(false);
@@ -25,6 +29,7 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
   };
 
   const handleEmailsChange = async (emails: string[]) => {
+    if (!mayEdit) return;
     try {
       const updatedContact = { ...contact, additionalEmails: emails };
       await updateContact(updatedContact);
@@ -59,10 +64,10 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
             </span>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+        {mayEdit && <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
           <Pencil className="h-4 w-4 mr-2" />
           Bewerken
-        </Button>
+        </Button>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -123,7 +128,7 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
       )}
 
       {/* Email Management for suppliers and B2B clients */}
-      {(contact.type === "supplier" || contact.type === "b2b") && (
+      {mayEdit && (contact.type === "supplier" || contact.type === "b2b") && (
         <div className="mb-8">
           <ContactEmailManager
             primaryEmail={contact.email}
@@ -133,7 +138,7 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
         </div>
       )}
 
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+      <Dialog open={mayEdit && isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <ContactForm
             initialData={contact}

@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount } from "@/lib/performanceGroups";
-import { inPeriod, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
-import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
+import { inPeriod, nlDate, nlDayStart, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 
 export type DirectiePeriod = "week" | "month" | "quarter" | "year";
 export type DirectieBranch = "all" | "rotterdam" | "heerhugowaard";
@@ -87,6 +87,10 @@ export const approvedAtOf = (o: WorkOrderRow): string | null =>
 
 const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
   rows.filter(o => {
+    if (o.discipline === "poets") {
+      const at = ["afgerond", "goedgekeurd"].includes(o.status || "") ? o.finished_at || o.approved_at : null;
+      return !!at && nlDate(at) >= dayStr(from) && nlDate(at) < dayStr(to);
+    }
     const at = approvedAtOf(o);
     if (!at) return false;
     const t = +new Date(at);
@@ -104,7 +108,8 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
 
   const [bron, ordersAll, ordersOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
     fetchOmzetBron(histStart, histEnd, branch),
-    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", woStart.toISOString()), branch).order("id").range(a, b)),
+    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel)
+      .or(`created_at.gte.${woStart.toISOString()},and(discipline.eq.poets,finished_at.gte.${nlDayStart(dayStr(histStart))},finished_at.lt.${nlDayStart(dayStr(histEnd))}),and(discipline.eq.poets,finished_at.is.null,approved_at.gte.${nlDayStart(dayStr(histStart))},approved_at.lt.${nlDayStart(dayStr(histEnd))})`), branch).order("id").range(a, b)),
     fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch).order("id").range(a, b)),
@@ -137,7 +142,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
 
 /* ---------- afgeleide berekeningen (bron: omzet_regels) ---------- */
 
-export const regelsIn = (raw: DirectieRaw, from: Date, to: Date) => inPeriod(raw.bron.regels, dayStr(from), dayStr(to));
+export const regelsIn = (raw: DirectieRaw, from: Date, to: Date) => omzetLiveRegels(raw.bron, dayStr(from), dayStr(to));
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
 /** Uren = fairSeconds per medewerker (interval-unie, alleen binnen werktijd) van klaar-gemelde orders. */
@@ -156,6 +161,7 @@ export interface KernCijfers {
   total: number; intern: number; extern: number;
   schade: number; werkplaats: number; poets: number;
   poetsOpen: { count: number; bedrag: number };
+  poetsGefactureerd: number;
 }
 export function kernCijfers(raw: DirectieRaw, from: Date, to: Date): KernCijfers {
   const regels = regelsIn(raw, from, to);
@@ -169,6 +175,7 @@ export function kernCijfers(raw: DirectieRaw, from: Date, to: Date): KernCijfers
     extern: r2(d.schadeherstel.extern + d.werkplaats.extern + d.poets.extern),
     schade: t.schadeherstel, werkplaats: t.werkplaats, poets: t.poets,
     poetsOpen: { count: po.count, bedrag: po.bedrag },
+    poetsGefactureerd: takTotals(inPeriod(raw.bron.regels, dayStr(from), dayStr(to))).poets,
   };
 }
 
@@ -187,7 +194,7 @@ export function poetsStatsDirectie(raw: DirectieRaw, orders: WorkOrderRow[]): Po
     if (!p) return "onbekend";
     return p.poetser_type === "extern" ? "extern" : "intern";
   };
-  const done = orders.filter(o => o.discipline === "poets" && !!approvedAtOf(o));
+    const done = orders.filter(o => o.discipline === "poets" && !!approvedAtOf(o));
   const seconds = done.reduce((a, o) => a + Number(o.work_seconds || 0), 0);
   return {
     internCars: done.filter(o => typeOf(o.assigned_to) === "intern").length,
