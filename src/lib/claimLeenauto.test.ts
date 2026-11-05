@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapClaimUitleningen, magInnemenVanuitClaim, claimBewerkPatch } from "../claimLeenauto";
+import { mapClaimUitleningen, magInnemenVanuitClaim, claimBewerkPatch } from "./claimLeenauto";
 
 const u = (id: string, claim: string | null, uit: string, terug: string | null, kenteken = "JSF-14-P") => ({
   id, warranty_claim_id: claim, uitgeleend_op: uit, ingeleverd_op: terug, kenteken,
