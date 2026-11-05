@@ -5811,6 +5811,7 @@ export type Database = {
           p_ingeleverd_op?: string
           p_notities?: string
           p_uitlening_id: string
+          p_warranty_claim_id?: string
         }
         Returns: undefined
       }
