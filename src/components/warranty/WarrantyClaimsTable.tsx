@@ -20,7 +20,9 @@ import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
 import { ClaimNumber } from './ClaimNumber';
 import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 import { updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from "@/services/warrantyService";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchUitleningenVoorClaims } from "@/services/leenautoService";
+import { mapClaimUitleningen } from "@/lib/claimLeenauto";
 import { useToast } from "@/hooks/use-toast";
 import { useIsCompact } from "@/hooks/use-mobile";
 import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
@@ -50,6 +52,17 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
   }, [claims, deepLinkDone]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  // Eén query voor alle zichtbare claims; uitsluitend via warranty_claim_id (nooit pool-status).
+  const claimIds = React.useMemo(() => claims.map((c) => c.id), [claims]);
+  const { data: uitleningen = [] } = useQuery({
+    queryKey: ["claimUitleningen", claimIds],
+    enabled: claimIds.length > 0,
+    queryFn: () => fetchUitleningenVoorClaims(claimIds),
+  });
+  const leenLabel = (claim: WarrantyClaim) =>
+    mapClaimUitleningen(claim.id, uitleningen, {
+      loanCarId: claim.loanCarId, loanCarAssigned: claim.loanCarAssigned, kenteken: claim.loanCarDetails?.licenseNumber,
+    });
   const isCompact = useIsCompact();
 
   const formatDate = (date: Date | string) => {
@@ -206,11 +219,12 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                 <>
                   {getStatusBadge(claim.status)}
                   {getPriorityBadge(claim.priority)}
-                  {claim.loanCarAssigned && (
-                    <Badge variant="outline" className="bg-green-100 text-green-800">
-                      Leenauto {claim.loanCarDetails?.licenseNumber || ""}
-                    </Badge>
-                  )}
+                  {(() => {
+                    const s = leenLabel(claim);
+                    return s.soort === "geen" ? null : (
+                      <Badge variant={s.soort === "open" ? "secondary" : "outline"}>Leenauto: {s.label}</Badge>
+                    );
+                  })()}
                 </>
               }
               fields={[
@@ -309,16 +323,16 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                   {getPriorityBadge(claim.priority)}
                 </TableCell>
                 <TableCell>
-                  {claim.loanCarAssigned ? (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm">{claim.loanCarDetails?.licenseNumber || "Toegewezen"}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-gray-500">
-                      <span className="text-sm">Niet toegewezen</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const s = leenLabel(claim);
+                    if (s.soort === "geen") return <span className="text-sm text-muted-foreground">Niet toegewezen</span>;
+                    return (
+                      <div className={`flex items-center gap-1 text-sm ${s.soort === "open" ? "text-primary" : "text-muted-foreground"}`}>
+                        {s.soort === "open" && <CheckCircle className="h-4 w-4" />}
+                        <span>{s.label}</span>
+                      </div>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {claim.appointmentDate ? (
