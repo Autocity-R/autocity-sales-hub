@@ -60,6 +60,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { canWriteLeenautoRole } from "@/lib/routeAccess";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClaimLeenautoSection, ResolveLeenautoGuard, useOpenClaimUitlening } from "@/components/leenauto/ClaimLeenauto";
+import { claimBewerkPatch } from "@/lib/claimLeenauto";
 
 interface WarrantyClaimDetailProps {
   claim: WarrantyClaim;
@@ -156,7 +157,9 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   };
 
   const handleSave = () => {
-    onUpdate(claim.id, editedClaim);
+    // Alleen gewijzigde bewerkvelden; nooit loanCarId/loanCarAssigned uit een verouderde snapshot.
+    const patch = claimBewerkPatch(claim, editedClaim);
+    if (Object.keys(patch).length) onUpdate(claim.id, patch);
     setIsEditing(false);
     toast({
       title: "Claim bijgewerkt",
@@ -773,6 +776,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
       <ResolveLeenautoGuard
         open={showLeenGuard}
         uitlening={openUitlening ?? null}
+        claimId={claim.id}
         onCancel={() => setShowLeenGuard(false)}
         onProceed={doResolve}
       />
