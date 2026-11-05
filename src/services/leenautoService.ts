@@ -91,11 +91,17 @@ export const leenautoUitlenen = async (i: UitleenInput): Promise<string> => {
   return data as string;
 };
 
-export const leenautoInnemen = async (uitleningId: string, ingeleverdOp: Date, notities?: string) => {
+export const leenautoInnemen = async (
+  uitleningId: string,
+  ingeleverdOp: Date,
+  notities?: string,
+  warrantyClaimId?: string | null,
+) => {
   const { error } = await db.rpc("leenauto_innemen", {
     p_uitlening_id: uitleningId,
     p_ingeleverd_op: ingeleverdOp.toISOString(),
     p_notities: notities || null,
+    ...(warrantyClaimId ? { p_warranty_claim_id: warrantyClaimId } : {}),
   });
   if (error) throw cleanError(error);
 };
@@ -143,29 +149,32 @@ export const fetchUitleningen = async (loanCarId?: string): Promise<Uitlening[]>
   }));
 };
 
-/** Open uitlening voor een claim (via claim-id óf via de gekoppelde leenauto). */
-export const fetchOpenUitleningVoorClaim = async (
-  claimId: string,
-  loanCarId?: string | null,
-): Promise<Uitlening | null> => {
-  const { data } = await db
-    .from("leenauto_uitleningen")
-    .select("*, loan_cars(vehicles!loan_cars_vehicle_id_fkey(license_number))")
-    .is("ingeleverd_op", null)
-    .eq("warranty_claim_id", claimId)
-    .limit(1);
-  let row = data?.[0];
-  if (!row && loanCarId) {
-    const r2 = await db
+/**
+ * Alle uitleningen (open én gesloten) van de opgegeven claims, uitsluitend via warranty_claim_id.
+ * Nooit via loan_car_id: dat is een pool-auto die steeds opnieuw wordt uitgeleend.
+ */
+export const fetchUitleningenVoorClaims = async (claimIds: string[]): Promise<Uitlening[]> => {
+  const ids = Array.from(new Set(claimIds.filter(Boolean)));
+  if (!ids.length) return [];
+  const out: Uitlening[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await db
       .from("leenauto_uitleningen")
       .select("*, loan_cars(vehicles!loan_cars_vehicle_id_fkey(license_number))")
-      .is("ingeleverd_op", null)
-      .eq("loan_car_id", loanCarId)
-      .limit(1);
-    row = r2.data?.[0];
+      .in("warranty_claim_id", ids.slice(i, i + 200))
+      .order("uitgeleend_op", { ascending: false });
+    if (error) throw cleanError(error);
+    (data || []).forEach((r: any) => out.push({ ...r, kenteken: r.loan_cars?.vehicles?.license_number || "" }));
   }
-  if (!row) return null;
-  return { ...row, kenteken: row.loan_cars?.vehicles?.license_number || "" };
+  return out;
+};
+
+export const fetchUitleningenVoorClaim = (claimId: string) => fetchUitleningenVoorClaims([claimId]);
+
+/** Open uitlening van precies deze claim (warranty_claim_id = claimId), anders null. */
+export const fetchOpenUitleningVoorClaim = async (claimId: string): Promise<Uitlening | null> => {
+  const rows = await fetchUitleningenVoorClaim(claimId);
+  return rows.find((r) => r.warranty_claim_id === claimId && !r.ingeleverd_op) || null;
 };
 
 export const formatNL = (iso: string | Date | null | undefined) => {

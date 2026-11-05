@@ -253,12 +253,14 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
 interface InleverDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  uitlening: Pick<Uitlening, "id" | "klant_naam" | "uitgeleend_op"> | null;
+  uitlening: Pick<Uitlening, "id" | "klant_naam" | "uitgeleend_op"> & { warranty_claim_id?: string | null } | null;
   loanCarLabel: string;
   onDone?: () => void;
+  /** Geopend vanuit een claim: alleen uitleningen van déze claim mogen worden ingenomen. */
+  claimId?: string;
 }
 
-export const LeenautoInleverDialog: React.FC<InleverDialogProps> = ({ open, onOpenChange, uitlening, loanCarLabel, onDone }) => {
+export const LeenautoInleverDialog: React.FC<InleverDialogProps> = ({ open, onOpenChange, uitlening, loanCarLabel, onDone, claimId }) => {
   const { toast } = useToast();
   const [moment, setMoment] = useState("");
   const [notitie, setNotitie] = useState("");
@@ -268,9 +270,13 @@ export const LeenautoInleverDialog: React.FC<InleverDialogProps> = ({ open, onOp
   const submit = async () => {
     const d = fromLocalInput(moment);
     if (!uitlening || !d) return;
+    if (claimId && uitlening.warranty_claim_id !== claimId) {
+      toast({ title: "Inleveren geweigerd", description: "Deze uitlening hoort bij een andere claim", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     try {
-      await leenautoInnemen(uitlening.id, d, notitie);
+      await leenautoInnemen(uitlening.id, d, notitie, claimId || null);
       toast({ title: "Leenauto ingeleverd", description: loanCarLabel });
       onOpenChange(false);
       onDone?.();
