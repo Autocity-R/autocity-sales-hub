@@ -16,3 +16,4 @@
 - Warranty numbers are allocated by a locked yearly counter trigger and never replace UUID foreign keys; contact changes use an atomic SECURITY INVOKER RPC and an audit trigger. Why: numbering is concurrency-safe and contact-card RLS remains authoritative.
 - Vehicle open points use a separate SECURITY INVOKER RPC shared by all timeline views. Why: read-only status summaries respect each source's existing RLS without per-card queries.
 - Warranty-claim loan car display uses only leenauto_uitleningen.warranty_claim_id (src/lib/claimLeenauto.ts), never the pool car's current loan; claim-side returns pass p_warranty_claim_id to leenauto_innemen. Why: loan_cars are reused pool cars, so their current borrower belongs to other claims.
+- Workshop invoice payment status changes go through SECURITY DEFINER RPC factuur_betaalstatus_zetten (includes operationeel_directeur). Why: the director may mark payments without widening workshop_invoices write RLS.

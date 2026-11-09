@@ -538,10 +538,7 @@ export const releasePartsFromInvoice = async (invoiceId: string): Promise<void> 
 
 /** Zet de betaalstatus van een factuur om (open ↔ betaald). */
 export const setInvoicePaymentStatus = async (id: string, status: PaymentStatus): Promise<void> => {
-  const { error } = await (supabase as any)
-    .from("workshop_invoices")
-    .update({ payment_status: status, paid_at: status === "betaald" ? new Date().toISOString() : null })
-    .eq("id", id);
+  const { error } = await (supabase as any).rpc("factuur_betaalstatus_zetten", { p_id: id, p_status: status });
   if (error) throw error;
 };
 

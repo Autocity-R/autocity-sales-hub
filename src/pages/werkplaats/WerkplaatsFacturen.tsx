@@ -30,7 +30,10 @@ interface InvoiceRow {
 }
 
 const WerkplaatsFacturen: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  const roleAccess = useRoleAccess();
+  const readOnly = roleAccess.isDirectieReadOnly();
+  // Operationeel directeur mag (alleen) de betaalstatus omzetten
+  const mayTogglePaid = !readOnly || roleAccess.isOperationeelDirecteur();
   const { userRole, isAdmin } = useAuth();
   const mayCreateManual = isAdmin || featureAccess["handmatige-facturen"](userRole);
   const navigate = useNavigate();
@@ -229,7 +232,7 @@ const WerkplaatsFacturen: React.FC = () => {
                     {r.status === "verstuurd" ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>
-                        {!readOnly && r.invoice_kind !== "intern" && r.payment_status !== "nvt" && (
+                        {mayTogglePaid && r.invoice_kind !== "intern" && r.payment_status !== "nvt" && (
                           <Button size="sm" variant="ghost" onClick={() => togglePaid(r)}>
                             <Check className="h-3.5 w-3.5 mr-1" />{r.payment_status === "betaald" ? "Op open" : "Betaald"}
                           </Button>

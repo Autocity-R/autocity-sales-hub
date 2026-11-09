@@ -90,6 +90,7 @@ const DirectieDashboard: React.FC = () => {
   const [period, setPeriod] = React.useState<DirectiePeriod>("month");
   const [branch, setBranch] = React.useState<DirectieBranch>("all");
   const [employee, setEmployee] = React.useState<EmployeeKpi | null>(null);
+  const [oldestDisc, setOldestDisc] = React.useState<string>("all");
 
   const { data: raw, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["directie", period, branch],
@@ -322,8 +323,16 @@ const DirectieDashboard: React.FC = () => {
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     Oudste open taken — onderbouwing
                   </div>
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {([["all","Alles"],["werkplaats","Werkplaats"],["spuit","Schadeherstel"],["poets","Poetsen"],["uitdeuk","Uitdeuken"]] as const).map(([k,l]) => (
+                      <button key={k} type="button" onClick={() => setOldestDisc(k)}
+                        className={cn("rounded-full border px-3 py-1 text-[11.5px] font-semibold", oldestDisc === k ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground")}>
+                        {l} ({k === "all" ? m.flow.oldestList.length : m.flow.oldestList.filter(t => t.discipline === k).length})
+                      </button>
+                    ))}
+                  </div>
                   <div className="space-y-2">
-                    {m.flow.oldestList.map(t => (
+                    {m.flow.oldestList.filter(t => oldestDisc === "all" || t.discipline === oldestDisc).slice(0, 5).map(t => (
                       <div key={t.id} className="rounded-xl border border-slate-200 bg-[#f8f9fb] p-3">
                         <div className="flex flex-wrap items-center gap-2">
                           {t.licensePlate && <AsLicensePlate size="sm" value={t.licensePlate} />}
