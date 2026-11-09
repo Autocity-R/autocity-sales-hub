@@ -110,7 +110,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     fetchOmzetBron(histStart, histEnd, branch),
     fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel)
       .or(`created_at.gte.${woStart.toISOString()},and(discipline.eq.poets,finished_at.gte.${nlDayStart(dayStr(histStart))},finished_at.lt.${nlDayStart(dayStr(histEnd))}),and(discipline.eq.poets,finished_at.is.null,approved_at.gte.${nlDayStart(dayStr(histStart))},approved_at.lt.${nlDayStart(dayStr(histEnd))})`), branch).order("id").range(a, b)),
-    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch).order("id").range(a, b)),
+    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).in("status", ["aangevraagd","ingepland","bezig","gepauzeerd"]), branch).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch).order("id").range(a, b)),
     supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
@@ -285,7 +285,7 @@ export function flowStats(raw: DirectieRaw) {
     return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || null : null;
   };
 
-  const oldestList = sortedOpen.slice(0, 5).map(o => {
+  const oldestList = sortedOpen.slice(0, 200).map(o => {
     const v = o.vehicle_id ? raw.vehicles[o.vehicle_id] : undefined;
     return {
       id: o.id,
