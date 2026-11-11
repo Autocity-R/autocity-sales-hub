@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import CustomerWorkshopHistory from "@/components/customers/CustomerWorkshopHistory";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSuppliers } from "@/lib/supplierAccess";
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +25,8 @@ const CustomerDetail = () => {
   const [purchasedVehicles, setPurchasedVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
+  const { actualRole, roleLoading } = useAuth();
+  const showSuppliers = canViewSuppliers(actualRole);
 
   useEffect(() => {
     const loadContact = async () => {
@@ -65,7 +69,7 @@ const CustomerDetail = () => {
     }
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-8">
@@ -75,7 +79,8 @@ const CustomerDetail = () => {
     );
   }
 
-  if (!contact) {
+  // Leverancier openen zonder leveranciersrechten: behandelen als niet gevonden.
+  if (!contact || (contact.type === "supplier" && !showSuppliers)) {
     return (
       <DashboardLayout>
         <div className="space-y-6">

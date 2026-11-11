@@ -1,3 +1,4 @@
+import { getRoleLabel } from "@/lib/roles";
 import React, { useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -91,12 +92,7 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ open, onClos
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="font-medium">{user.first_name} {user.last_name}</p>
                 <p className="text-sm text-gray-600">{user.email}</p>
-                <p className="text-sm text-gray-600">Rol: {
-                  user.role === "admin" ? "Admin" : 
-                  user.role === "owner" ? "Owner" :
-                  user.role === "manager" ? "Manager" :
-                  user.role === "verkoper" ? "Verkoper" : "Gebruiker"
-                }</p>
+                <p className="text-sm text-gray-600">Rol: {getRoleLabel(user.role)}</p>
               </div>
             </div>
 

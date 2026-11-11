@@ -7,7 +7,7 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-const ROLES = ["admin","owner","manager","verkoper","operationeel","user","aftersales_manager","schadeherstel",
+const ROLES = ["admin","owner","manager","verkoper","inkoper","operationeel","user","aftersales_manager","schadeherstel",
   "monteur","werkplaats_chef","uitdeuker_extern","operationeel_directeur","poetser","administratie"];
 const UUID = /^[0-9a-f-]{36}$/i;
 const OPEN_TASK = ["toegewezen", "in_uitvoering", "uitgesteld"];

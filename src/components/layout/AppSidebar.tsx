@@ -38,7 +38,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess, hasGarantieAccess, userRole, isAdmin } = useRoleAccess();
+  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess, hasGarantieAccess, userRole, isAdmin, canViewSuppliers } = useRoleAccess();
 
   // Debug logging for menu visibility
   console.log('[AppSidebar] userRole:', userRole, 'isAdmin:', isAdmin, 'hasTaxatieAccess():', hasTaxatieAccess());
@@ -186,7 +186,7 @@ export function AppSidebar() {
                   </SidebarMenuSub>
                 </SidebarMenuItem>
               )}
-              {hasCustomersAccess() && (
+              {hasCustomersAccess() && canViewSuppliers() && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/suppliers")}>
                     <Link to="/suppliers" className="text-white hover:text-white hover:bg-gray-800">

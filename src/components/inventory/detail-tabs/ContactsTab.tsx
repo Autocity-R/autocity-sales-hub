@@ -8,6 +8,8 @@ import { User, Phone, Mail, Building, Edit, Plus } from "lucide-react";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSuppliers } from "@/lib/supplierAccess";
 
 interface ContactsTabProps {
   vehicle: Vehicle;
@@ -20,6 +22,8 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
   const [loadingCustomer, setLoadingCustomer] = useState(false);
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const { toast } = useToast();
+  const { actualRole } = useAuth();
+  const showSuppliers = canViewSuppliers(actualRole);
 
   // Load customer contact when vehicle.customerId changes
   useEffect(() => {
@@ -41,7 +45,7 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
 
   // Load supplier contact when vehicle.supplierId changes
   useEffect(() => {
-    if (vehicle.supplierId) {
+    if (vehicle.supplierId && showSuppliers) {
       setLoadingSupplier(true);
       supabaseCustomerService.getContactById(vehicle.supplierId)
         .then(contact => {
@@ -55,7 +59,7 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
     } else {
       setSupplierContact(null);
     }
-  }, [vehicle.supplierId]);
+  }, [vehicle.supplierId, showSuppliers]);
 
   const handleCustomerChange = (contactId: string, contact: Contact) => {
     onUpdate({
@@ -87,13 +91,14 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Contacten</h3>
       
-      {vehicle.details?.isTradeIn && (
+      {showSuppliers && vehicle.details?.isTradeIn && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md text-sm text-emerald-700">
           <strong>Dit is een inruil voertuig.</strong> Leverancier blijft bewust leeg.
         </div>
       )}
       
       <div className="space-y-6">
+        {showSuppliers && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -163,6 +168,7 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
             )}
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>

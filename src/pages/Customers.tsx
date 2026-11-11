@@ -7,17 +7,28 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { useQuery } from "@tanstack/react-query";
 import { useRealtimeContacts } from "@/hooks/useRealtimeContacts";
+import { useLocation, Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSuppliers, filterContactsForRole } from "@/lib/supplierAccess";
 
 const Customers = () => {
-  const { data: allContacts = [], isLoading: loadingAll } = useQuery({
+  const location = useLocation();
+  const { actualRole, roleLoading } = useAuth();
+  const showSuppliers = canViewSuppliers(actualRole);
+
+  const { data: allContactsRaw = [], isLoading: loadingAll } = useQuery({
     queryKey: ["contacts", "all"],
     queryFn: getContacts
   });
 
   const { data: suppliers = [], isLoading: loadingSuppliers } = useQuery({
     queryKey: ["contacts", "supplier"],
-    queryFn: () => getContactsByType("supplier")
+    queryFn: () => getContactsByType("supplier"),
+    enabled: showSuppliers,
   });
+
+  // Verkopers/aftersales: leveranciers ook niet tussen "Alle contacten".
+  const allContacts = filterContactsForRole(allContactsRaw, actualRole);
 
   const { data: b2bCustomers = [], isLoading: loadingB2B } = useQuery({
     queryKey: ["contacts", "b2b"],
@@ -36,7 +47,11 @@ const Customers = () => {
 
   useRealtimeContacts();
 
-  const loading = loadingAll || loadingSuppliers || loadingB2B || loadingB2C || loadingTransporters;
+  if (!roleLoading && !showSuppliers && location.pathname === "/suppliers") {
+    return <Navigate to="/customers" replace />;
+  }
+
+  const loading = loadingAll || (showSuppliers && loadingSuppliers) || loadingB2B || loadingB2C || loadingTransporters;
 
   if (loading) {
     return (
@@ -59,13 +74,15 @@ const Customers = () => {
       <div className="space-y-6">
         <PageHeader 
           title="Klanten & Contacten"
-          description="Beheer al uw leveranciers, transporteurs, zakelijke en particuliere klanten"
+          description={showSuppliers
+            ? "Beheer al uw leveranciers, transporteurs, zakelijke en particuliere klanten"
+            : "Beheer uw transporteurs, zakelijke en particuliere klanten"}
         />
         
-        <Tabs defaultValue="all" className="space-y-4">
+        <Tabs defaultValue={showSuppliers && location.pathname === "/suppliers" ? "suppliers" : "all"} className="space-y-4">
           <TabsList>
             <TabsTrigger value="all">Alle contacten</TabsTrigger>
-            <TabsTrigger value="suppliers">Leveranciers</TabsTrigger>
+            {showSuppliers && <TabsTrigger value="suppliers">Leveranciers</TabsTrigger>}
             <TabsTrigger value="transporters">Transporteurs</TabsTrigger>
             <TabsTrigger value="b2b">Zakelijke klanten</TabsTrigger>
             <TabsTrigger value="b2c">Particuliere klanten</TabsTrigger>
@@ -78,13 +95,15 @@ const Customers = () => {
             />
           </TabsContent>
           
-          <TabsContent value="suppliers">
-            <ContactList 
-              contacts={suppliers} 
-              title="Leveranciers" 
-              type="supplier"
-            />
-          </TabsContent>
+          {showSuppliers && (
+            <TabsContent value="suppliers">
+              <ContactList 
+                contacts={suppliers} 
+                title="Leveranciers" 
+                type="supplier"
+              />
+            </TabsContent>
+          )}
           
           <TabsContent value="b2b">
             <ContactList 

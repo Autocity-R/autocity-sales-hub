@@ -1,8 +1,12 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { canViewSuppliers as canViewSuppliersRole } from "@/lib/supplierAccess";
 import { featureAccess, canManageChecklistsRole, canAssignTasksRole, canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole } from "@/lib/routeAccess";
 
 export const useRoleAccess = () => {
-  const { userRole, isAdmin, roleLoading } = useAuth();
+  const { userRole, actualRole, isAdmin, roleLoading } = useAuth();
+
+  // Leveranciers (klantenmenu + voertuigdetail): op de echte rol, zodat de inkoper ze wél ziet.
+  const canViewSuppliers = () => canViewSuppliersRole(actualRole);
 
   // Debug logging
   console.log('[useRoleAccess] Current userRole:', userRole, 'isAdmin:', isAdmin);
@@ -172,6 +176,8 @@ export const useRoleAccess = () => {
   const canManageChecklists = () => isAdmin || canManageChecklistsRole(userRole);
 
   return {
+    canViewSuppliers,
+    actualRole,
     hasReportsAccess,
     hasRapportagesAccess,
     hasAftersalesOnlyReportsAccess,

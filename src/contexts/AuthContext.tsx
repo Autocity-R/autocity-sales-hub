@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toEffectiveRole } from "@/lib/supplierAccess";
 
 interface AuthContextType {
   user: User | null;
@@ -12,7 +13,10 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   isAdmin: boolean;
+  /** Effectieve rol voor alle rolchecks (inkoper → verkoper). */
   userRole: string | null;
+  /** Echte rol uit user_roles (bijv. "inkoper"); alleen voor extra rechten zoals leveranciers. */
+  actualRole: string | null;
   roleLoading: boolean;
 }
 
@@ -28,6 +32,7 @@ const defaultAuthContext: AuthContextType = {
   resetPassword: async () => ({ error: new Error("AuthProvider not mounted") }),
   isAdmin: false,
   userRole: null,
+  actualRole: null,
   roleLoading: true,
 };
 
@@ -46,13 +51,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [actualRole, setActualRole] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
 
   // Rol-prioriteit: bij meerdere rijen wint de zwaarste rol (voorkomt dat een
   // owner met een extra rol-rij op null uitkomt en guards hem wegsturen).
   const ROLE_PRIORITY = [
     'owner', 'admin', 'manager', 'aftersales_manager', 'werkplaats_chef',
-    'operationeel_directeur', 'verkoper', 'operationeel', 'monteur',
+    'operationeel_directeur', 'inkoper', 'verkoper', 'operationeel', 'monteur',
     'schadeherstel', 'uitdeuker_extern', 'poetser', 'user',
   ];
 
@@ -69,7 +75,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const role =
         ROLE_PRIORITY.find((p) => roles.includes(p)) ?? roles[0] ?? null;
 
-      setUserRole(role);
+      setActualRole(role);
+      setUserRole(toEffectiveRole(role));
       setIsAdmin(role === 'admin' || role === 'owner');
     } catch (error) {
       // Bij een mislukte rol-query de bestaande rol NIET wissen: dat leidde tot
@@ -95,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setIsAdmin(false);
           setUserRole(null);
+          setActualRole(null);
           setRoleLoading(false);
         }
         setLoading(false);
@@ -182,6 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     resetPassword,
     isAdmin,
     userRole,
+    actualRole,
     roleLoading,
   };
 

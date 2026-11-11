@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager, isAdministratie,
-    userRole,
+    userRole, canViewSuppliers,
   } = useRoleAccess();
 
   const isVerkoper = userRole === "verkoper";
@@ -395,16 +395,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Particulier
               </Button>
             </Link>
-            <Link to="/suppliers">
-              <Button
-                variant={isActive("/suppliers") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <TruckIcon className="mr-2 h-4 w-4" />
-                Leveranciers
-              </Button>
-            </Link>
+            {canViewSuppliers() && (
+              <Link to="/suppliers">
+                <Button
+                  variant={isActive("/suppliers") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <TruckIcon className="mr-2 h-4 w-4" />
+                  Leveranciers
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
