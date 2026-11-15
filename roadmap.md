@@ -41,3 +41,7 @@
 - [x] Bouwstap 16B: live werkplaatsstatus bij garantieclaims (badge, filter, 60 s alleen op garantiemenu, "afronden?"-signaal) (niet publiceren)
 - [x] Bouwstap 16C: operationeel directeur maakt werkplaats- en schadeherstelopdrachten aan + garantie inplannen (niet publiceren)
 - [ ] Bouwstap 16 ingelogde schermcontrole (OD/aftersales/garantiemenu): externe Supabase biedt geen testsessie
+
+- [ ] Bouwstap 17A: tijdregels per persoon (work_order_tijdregels + trigger), geen backfill (niet publiceren)
+- [ ] Bouwstap 17B: generiek overnemen (werkorder_overnemen, spuit_overnemen wrapper, knop voor monteurs)
+- [ ] Bouwstap 17C: uren per persoon in Performance/KPI/Directie/Mijn prestaties + "samen met", planning "A → B (overgenomen)"

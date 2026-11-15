@@ -5446,6 +5446,103 @@ export type Database = {
         }
         Relationships: []
       }
+      work_order_overnames: {
+        Row: {
+          created_at: string
+          id: string
+          naar_user_id: string
+          overgenomen_op: string
+          van_user_id: string | null
+          work_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          naar_user_id: string
+          overgenomen_op?: string
+          van_user_id?: string | null
+          work_order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          naar_user_id?: string
+          overgenomen_op?: string
+          van_user_id?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_overnames_naar_user_id_fkey"
+            columns: ["naar_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_overnames_van_user_id_fkey"
+            columns: ["van_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_overnames_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_order_tijdregels: {
+        Row: {
+          created_at: string
+          gestart_op: string
+          gestopt_op: string | null
+          id: string
+          stop_reden: string | null
+          user_id: string
+          vooraf_seconden: number
+          work_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          gestart_op: string
+          gestopt_op?: string | null
+          id?: string
+          stop_reden?: string | null
+          user_id: string
+          vooraf_seconden?: number
+          work_order_id: string
+        }
+        Update: {
+          created_at?: string
+          gestart_op?: string
+          gestopt_op?: string | null
+          id?: string
+          stop_reden?: string | null
+          user_id?: string
+          vooraf_seconden?: number
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_tijdregels_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_tijdregels_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_orders: {
         Row: {
           approved_at: string | null
@@ -6057,6 +6154,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      werkorder_overnemen: { Args: { p_id: string }; Returns: undefined }
       werkorder_toch_factureren: {
         Args: { p_work_order_id: string }
         Returns: undefined
