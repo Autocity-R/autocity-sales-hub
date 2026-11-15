@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { eur, num, NoData } from "@/components/rapportages/RapportagesShell";
-import { cleanDescription, linkedExternalInvoice, pendingInvoiceAmount, possibleDuplicates, suspiciousTimer, orderTime, type OrderGroup } from "@/lib/performanceGroups";
+import { cleanDescription, linkedExternalInvoice, pendingInvoiceAmount, possibleDuplicates, suspiciousTimer, orderTime, secondsByPerson, uitvoerders, type OrderGroup } from "@/lib/performanceGroups";
+import { samenMetLabel, urenPerPersoonLabel, usesTijdregels } from "@/lib/tijdregels";
 import type { RapOrder, RapRaw } from "@/services/rapportageService";
 
 type Vehicle = { brand: string | null; model: string | null; license_number: string | null } | undefined;
@@ -29,9 +30,11 @@ interface Props {
   groups: OrderGroup<GOrder>[];
   revenue: Map<string, number>;
   nameOf: (id?: string | null) => string;
+  /** medewerker van wie dit overzicht is ("samen met X") */
+  personId?: string | null;
 }
 
-export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, nameOf }) => {
+export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, nameOf, personId }) => {
   const [open, setOpen] = React.useState<OrderGroup<GOrder> | null>(null);
   const openSiblings = (g: OrderGroup<GOrder>) => raw.orders.filter(o =>
     o.vehicle_id && o.vehicle_id === g.vehicle_id && o.discipline === g.discipline
@@ -69,7 +72,10 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
                 <span className="truncate text-[12.5px] font-medium text-slate-800">{v?.brand} {v?.model}</span>
               </div>
               <ul className="mt-1.5 space-y-0.5 text-[12px] text-slate-600">
-                {g.orders.map(o => <li key={o.id} className="truncate">• {partsOf(o)} <span className="text-slate-400">({o.status})</span></li>)}
+                {g.orders.map(o => {
+                  const samen = personId ? samenMetLabel(uitvoerders(o), personId, id => nameOf(id)) : null;
+                  return <li key={o.id} className="truncate">• {partsOf(o)} <span className="text-slate-400">({o.status})</span>{samen && <span className="ml-1 text-blue-700">· {samen}</span>}</li>;
+                })}
               </ul>
               {sib.length > 0 && (
                 <div className="mt-1 text-[11.5px] text-slate-500">
@@ -159,7 +165,9 @@ const GroupDetailDialog: React.FC<{
             const external = r.origin === "extern";
             const externalInvoice = external ? linkedExternalInvoice(r.id, raw.invoices6m) : null;
             const sus = suspiciousTimer(r);
-            const t = orderTime(r);
+            const go = group?.orders.find(o => o.id === r.id);
+            const t = orderTime(go || r);
+            const uren = go && usesTijdregels(go.tijdregels) ? urenPerPersoonLabel(secondsByPerson(go), id => nameOf(id)) : null;
             const before = photoPaths(r.photos), after = photoPaths(r.result_photos);
             return (
               <div key={r.id} className="rounded-xl border border-slate-200 p-3 text-[12.5px]">
@@ -177,6 +185,7 @@ const GroupDetailDialog: React.FC<{
                   <Row k="Start / stop" v={`${dt(r.started_at)} → ${dt(r.finished_at)}`} />
                   <Row k="Gepauzeerd" v={r.paused_seconds ? `${Math.round(r.paused_seconds / 60)} min` : "—"} />
                   <Row k="Gewerkte tijd" v={r.work_seconds ? `geregistreerd ${hrs(t.registered)}, waarvan ${hrs(t.counted)} binnen werktijd geteld` : "—"} />
+                  {uren && <Row k="Uren" v={uren} strong />}
                   <Row k="Goedgekeurd" v={r.approved_at ? `${nameOf(r.approved_by)} · ${dt(r.approved_at)}` : "—"} />
                   <Row k="Afgekeurd" v={r.rejected_count ? `${r.rejected_count}×${r.reject_note ? ` — ${r.reject_note}` : ""}` : "0×"} />
                   <Row k="Afrondnotitie" v={r.finish_note || "—"} />

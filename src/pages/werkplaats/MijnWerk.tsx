@@ -12,8 +12,10 @@ import {
 } from "@/components/aftersales/ui";
 import {
   Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
-  RefreshCw, Pause, CalendarClock,
+  RefreshCw, Pause, CalendarClock, UserPlus,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { mayTakeOver } from "@/components/werkplaats/spuitActions";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 import { isHiddenFromFloor, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
@@ -41,13 +43,17 @@ interface WorkRow {
   external_customer: any;
   branch: string | null;
   vehicle_id: string | null;
+  assignee?: { first_name: string | null; last_name: string | null } | null;
   vehicle: {
     brand: string | null; model: string | null; license_number: string | null; year: number | null;
   } | null;
 }
 
 const SELECT =
-  "id, description, part, parts, photos, status, discipline, planned_at, due_date, started_at, paused_seconds, pause_reason, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
+  "id, description, part, parts, photos, status, discipline, planned_at, due_date, started_at, paused_seconds, pause_reason, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year), assignee:profiles!work_orders_assigned_to_fkey(first_name, last_name)";
+
+const assigneeName = (w: WorkRow) =>
+  [w.assignee?.first_name, w.assignee?.last_name].filter(Boolean).join(" ").trim() || "een collega";
 
 const MijnWerkCard: React.FC<{
   w: WorkRow;
@@ -59,7 +65,9 @@ const MijnWerkCard: React.FC<{
   onRelease: (w: WorkRow) => void;
   busy: boolean;
   onOpen?: (w: WorkRow) => void;
-}> = ({ w, mine, onStart, onDone, onPause, onClaim, onRelease, busy, onOpen }) => {
+  /** gepauzeerde klus van een collega → knop Overnemen */
+  onTakeover?: (w: WorkRow) => void;
+}> = ({ w, mine, onStart, onDone, onPause, onClaim, onRelease, busy, onOpen, onTakeover }) => {
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const ext = (w.external_customer || {}) as any;
   const isExtern = w.origin === "extern";
@@ -114,12 +122,17 @@ const MijnWerkCard: React.FC<{
 
       {w.status === "gepauzeerd" && (
         <div className="inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-800 text-[13px] font-semibold">
-          <Pause className="h-4 w-4" /> Gepauzeerd{w.pause_reason ? ` · ${w.pause_reason}` : ""}
+          <Pause className="h-4 w-4" /> Gepauzeerd{onTakeover ? ` bij ${assigneeName(w)}` : ""}{w.pause_reason ? ` · ${w.pause_reason}` : ""}
         </div>
       )}
 
       <div onClick={(e) => e.stopPropagation()} className="contents">
-      {!mine ? (
+      {onTakeover ? (
+        <Button onClick={() => onTakeover(w)} disabled={busy} variant="outline"
+          className="h-12 w-full text-[15px] font-semibold">
+          <UserPlus className="h-5 w-5 mr-2" /> Overnemen
+        </Button>
+      ) : !mine ? (
         <Button onClick={() => onClaim(w)} disabled={busy}
           className="h-12 w-full bg-slate-900 hover:bg-slate-800 text-white text-[15px] font-semibold">
           <HandMetal className="h-5 w-5 mr-2" /> Oppakken
@@ -153,6 +166,8 @@ const MijnWerkCard: React.FC<{
 };
 
 const MijnWerk: React.FC = () => {
+  const { userRole } = useAuth();
+  const magOvernemen = mayTakeOver(userRole, "werkplaats");
   const [userId, setUserId] = useState<string | null>(null);
   const [rows, setRows] = useState<WorkRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,7 +209,7 @@ const MijnWerk: React.FC = () => {
     };
   }, [load]);
 
-  const { vandaag, open } = useMemo(() => {
+  const { vandaag, open, collega } = useMemo(() => {
     const mine = rows.filter(r => r.assigned_to && r.assigned_to === userId);
     const vandaagList = [...mine].sort((a, b) =>
       (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
@@ -205,8 +220,12 @@ const MijnWerk: React.FC = () => {
       .sort((a, b) =>
         Number(b.is_rush) - Number(a.is_rush) ||
         (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
-    return { vandaag: vandaagList, open: openList };
-  }, [rows, userId]);
+    // Gepauzeerd bij een collega: overnemen (uren blijven bij wie ze maakte)
+    const collegaList = magOvernemen
+      ? rows.filter(r => r.status === "gepauzeerd" && r.assigned_to && r.assigned_to !== userId)
+      : [];
+    return { vandaag: vandaagList, open: openList, collega: collegaList };
+  }, [rows, userId, magOvernemen]);
 
   const patch = async (id: string, payload: Record<string, any>, optimistic: Partial<WorkRow>) => {
     setBusy(true);
@@ -266,6 +285,20 @@ const MijnWerk: React.FC = () => {
       return;
     }
     toast({ title: "Opgepakt", description: "De taak staat nu op jouw naam." });
+  };
+
+  const onTakeover = async (w: WorkRow) => {
+    setBusy(true);
+    const { error } = await (supabase.rpc as any)("werkorder_overnemen", { p_id: w.id });
+    setBusy(false);
+    setDetail(null);
+    if (error) {
+      toast({ title: "Overnemen lukt niet", description: error.message, variant: "destructive" });
+      load();
+      return;
+    }
+    toast({ title: "Overgenomen", description: "De klus staat nu op jouw naam. Tik op Verder om je eigen tijd te starten." });
+    load();
   };
 
   const onRelease = async (w: WorkRow) => {
@@ -358,6 +391,27 @@ const MijnWerk: React.FC = () => {
               "Niks ingepland voor vandaag.")}
             {section("🔧 Open taken — vrij op te pakken", "Nog niet toegewezen · pak zelf op",
               <Inbox className="h-4 w-4" />, open, false, "Geen open taken.")}
+            {collega.length > 0 && (
+              <AsCard className="flex flex-col">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+                  <div className="h-[30px] w-[30px] rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-600">
+                    <Pause className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-semibold text-slate-900">⏸ Gepauzeerd bij een collega</div>
+                    <div className="text-[12px] text-slate-500">Overnemen kan · de uren blijven bij wie ze gemaakt heeft</div>
+                  </div>
+                  <span className="ml-auto text-[13px] font-semibold text-slate-500">{collega.length}</span>
+                </div>
+                <div className="flex flex-col gap-3 p-3">
+                  {collega.map(w => (
+                    <MijnWerkCard key={w.id} w={w} mine={false}
+                      onStart={onStart} onDone={onDone} onPause={setPauseTarget} onClaim={onClaim} onRelease={onRelease}
+                      busy={busy} onOpen={setDetail} onTakeover={onTakeover} />
+                  ))}
+                </div>
+              </AsCard>
+            )}
           </div>
         )}
 
@@ -366,7 +420,14 @@ const MijnWerk: React.FC = () => {
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as any}
           actions={detail ? (
-            !detail.assigned_to ? (
+            detail.assigned_to && detail.assigned_to !== userId ? (
+              magOvernemen && detail.status === "gepauzeerd" ? (
+                <Button onClick={() => onTakeover(detail)} disabled={busy} variant="outline"
+                  className="h-12 w-full text-[15px] font-semibold">
+                  <UserPlus className="h-5 w-5 mr-2" /> Overnemen van {assigneeName(detail)}
+                </Button>
+              ) : null
+            ) : !detail.assigned_to ? (
               <Button onClick={() => { onClaim(detail); setDetail(null); }} disabled={busy}
                 className="h-12 w-full bg-slate-900 hover:bg-slate-800 text-white text-[15px] font-semibold">
                 <HandMetal className="h-5 w-5 mr-2" /> Oppakken

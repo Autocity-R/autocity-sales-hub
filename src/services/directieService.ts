@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount } from "@/lib/performanceGroups";
+import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount, uitvoerders } from "@/lib/performanceGroups";
+import { attachTijdregels, fetchTijdregelsSince, type Tijdregel } from "@/lib/tijdregels";
 import { inPeriod, nlDate, nlDayStart, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 
@@ -54,6 +55,7 @@ export interface WorkOrderRow {
   created_at: string; is_rush: boolean | null; rejected_count: number | null; branch: string | null;
   vehicle_id: string | null; part: string | null; parts?: any; origin: string | null; due_date: string | null;
   poets_type: string | null; paused_seconds?: number | null; external_customer?: any;
+  tijdregels?: Tijdregel[] | null;
 }
 
 export interface DirectieRaw {
@@ -106,7 +108,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   // orders ruim terug: een order kan lang vóór goedkeuring zijn aangemaakt
   const woStart = new Date(+histStart - 180 * 86400000);
 
-  const [bron, ordersAll, ordersOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
+  const [bron, ordersAll, ordersOpen, intakes, claims, loans, parts, profiles, tijdregels] = await Promise.all([
     fetchOmzetBron(histStart, histEnd, branch),
     fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel)
       .or(`created_at.gte.${woStart.toISOString()},and(discipline.eq.poets,finished_at.gte.${nlDayStart(dayStr(histStart))},finished_at.lt.${nlDayStart(dayStr(histEnd))}),and(discipline.eq.poets,finished_at.is.null,approved_at.gte.${nlDayStart(dayStr(histStart))},approved_at.lt.${nlDayStart(dayStr(histEnd))})`), branch).order("id").range(a, b)),
@@ -116,7 +118,10 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("parts_orders").select("id,status,part_name,created_at,branch").neq("status", "binnen"), branch).order("id").range(a, b)),
     supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
+    fetchTijdregelsSince(woStart),
   ]);
+  attachTijdregels(ordersAll, tijdregels);
+  attachTijdregels(ordersOpen, tijdregels);
 
   const orders = approvedInRange(ordersAll, from, to);
   const ordersPrev = approvedInRange(ordersAll, prevFrom, prevTo);
@@ -239,17 +244,18 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     return map.get(id)!;
   };
   const byPerson = new Map<string, WorkOrderRow[]>();
-  raw.orders.filter(o => o.assigned_to).forEach(o => {
-    const e = ensure(o.assigned_to as string, nameOf(o.assigned_to as string));
+  // order telt mee bij iedereen met een tijdregel (eigen uren); afkeur blijft bij de uitvoerder
+  raw.orders.forEach(o => uitvoerders(o).forEach(pid => {
+    const e = ensure(pid, nameOf(pid));
     e.done += 1;
-    e.rejects += Number(o.rejected_count || 0);
+    if (pid === o.assigned_to) e.rejects += Number(o.rejected_count || 0);
     byPerson.set(e.id, [...(byPerson.get(e.id) || []), o]);
-  });
+  }));
   rev.forEach((v, id) => { ensure(id || NIET_TOEGEWEZEN, id ? nameOf(id) : "Niet toegewezen").revenue += v; });
   return Array.from(map.values()).map(e => {
-    const hours = fairSeconds((byPerson.get(e.id) || []) as any) / 3600;
+    const hours = fairSeconds((byPerson.get(e.id) || []) as any, undefined, e.id) / 3600;
     // uitdeuken levert geen omzet op → niet in omzet/uur
-    const revHours = fairSeconds((byPerson.get(e.id) || []).filter(o => o.discipline !== "uitdeuk") as any) / 3600;
+    const revHours = fairSeconds((byPerson.get(e.id) || []).filter(o => o.discipline !== "uitdeuk") as any, undefined, e.id) / 3600;
     return {
       ...e, hours, revenue: Math.round(e.revenue * 100) / 100,
       perHour: revHours > 0 ? e.revenue / revHours : 0,

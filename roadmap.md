@@ -42,6 +42,7 @@
 - [x] Bouwstap 16C: operationeel directeur maakt werkplaats- en schadeherstelopdrachten aan + garantie inplannen (niet publiceren)
 - [ ] Bouwstap 16 ingelogde schermcontrole (OD/aftersales/garantiemenu): externe Supabase biedt geen testsessie
 
-- [ ] Bouwstap 17A: tijdregels per persoon (work_order_tijdregels + trigger), geen backfill (niet publiceren)
-- [ ] Bouwstap 17B: generiek overnemen (werkorder_overnemen, spuit_overnemen wrapper, knop voor monteurs)
-- [ ] Bouwstap 17C: uren per persoon in Performance/KPI/Directie/Mijn prestaties + "samen met", planning "A → B (overgenomen)"
+- [x] Bouwstap 17A: tijdregels per persoon (work_order_tijdregels + trigger), geen backfill (niet publiceren)
+- [x] Bouwstap 17B: generiek overnemen (werkorder_overnemen, spuit_overnemen wrapper, knop voor monteurs)
+- [x] Bouwstap 17C: uren per persoon in Performance/KPI/Directie/Mijn prestaties + "samen met", planning "A → B (overgenomen)"
+- [ ] Bouwstap 17 ingelogde schermcontrole (monteur Overnemen in Mijn werk, Performance-detail): externe Supabase biedt geen testsessie

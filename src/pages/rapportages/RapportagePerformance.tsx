@@ -6,7 +6,8 @@ import { AsPill } from "@/components/aftersales/ui";
 import { RapportagesShell, useRapportageFilters, Block, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
 import { employeeRows, employeeOrders, downloadCsv, revenueByOrder, doneInPeriod, performanceAansluiting, type EmployeeRow } from "@/services/rapportageService";
-import { groupOrders, suspiciousTimer, fairSeconds, pendingInvoiceAmount } from "@/lib/performanceGroups";
+import { groupOrders, suspiciousTimer, fairSeconds, pendingInvoiceAmount, registeredSeconds } from "@/lib/performanceGroups";
+import { TIJDREGELS_VANAF } from "@/lib/tijdregels";
 import { PerformanceGroupCards } from "@/components/rapportages/PerformanceGroups";
 import { cn } from "@/lib/utils";
 import { eur2 } from "@/components/rapportages/OmzetControle";
@@ -40,18 +41,18 @@ const RapportagePerformance: React.FC = () => {
   }, [rows, sort, asc]);
 
   const detail = React.useMemo(() => (raw && selected ? employeeOrders(raw, selected.id) : []), [raw, selected]);
-  const groups = React.useMemo(() => groupOrders(detail), [detail]);
+  const groups = React.useMemo(() => groupOrders(detail, selected?.id), [detail, selected]);
   const revenue = React.useMemo(() => (raw ? revenueByOrder(raw) : new Map<string, number>()), [raw]);
   const aans = React.useMemo(() => (raw ? performanceAansluiting(raw) : null), [raw]);
   const periodStats = React.useMemo(() => {
     if (!raw) return null;
     const done = detail.filter(o => doneInPeriod(o, raw.from, raw.to));
     return {
-      fair: fairSeconds(done) / 3600,
-      sum: done.reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600,
+      fair: fairSeconds(done, undefined, selected?.id) / 3600,
+      sum: done.reduce((a, o) => a + registeredSeconds(o, selected?.id), 0) / 3600,
       suspicious: done.filter(o => suspiciousTimer(o) != null).length,
     };
-  }, [raw, detail]);
+  }, [raw, detail, selected]);
   const nameOf = React.useCallback((id?: string | null) => {
     const p = raw?.profiles.find(x => x.id === id);
     return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend" : "Onbekend";
@@ -80,6 +81,9 @@ const RapportagePerformance: React.FC = () => {
             uren: num(r.hours, 1), omzet_per_uur: Math.round(r.perHour), taken: r.tasks, delen: r.parts,
           })))}
         >
+          <p className="border-b border-slate-100 px-4 py-2 text-[11.5px] text-slate-500" data-testid="perf-tijdregels-uitleg">
+            Uren per persoon worden vanaf {TIJDREGELS_VANAF} per tijdregel geteld: neemt iemand een klus over, dan blijven de uren staan bij wie ze gemaakt heeft en telt de klus bij allebei mee. Oudere klussen tellen zoals voorheen (alle tijd bij de uitvoerder). De omzet blijft bij de uitvoerder.
+          </p>
           {sorted.length === 0 ? (
             <NoData label="Nog onvoldoende data in deze periode" />
           ) : (
@@ -141,11 +145,11 @@ const RapportagePerformance: React.FC = () => {
               {periodStats.suspicious > 0 && (
                 <div className="mt-1 font-medium text-amber-700">⚠ {periodStats.suspicious} verdachte {periodStats.suspicious === 1 ? "timer" : "timers"} (liep door over de nacht of &gt; 10 uur) — alleen de uren binnen werktijd tellen mee</div>
               )}
-              <div className="mt-1">Nog te factureren: <b>{eur(detail.filter(o => doneInPeriod(o, raw.from, raw.to)).reduce((total, order) => total + pendingInvoiceAmount(order, raw.invoices6m), 0))}</b> <span className="text-slate-500">(apart van gefactureerde omzet)</span></div>
+              <div className="mt-1">Nog te factureren: <b>{eur(detail.filter(o => o.assigned_to === selected?.id && doneInPeriod(o, raw.from, raw.to)).reduce((total, order) => total + pendingInvoiceAmount(order, raw.invoices6m), 0))}</b> <span className="text-slate-500">(apart van gefactureerde omzet)</span></div>
             </div>
           )}
           <div className="mt-4">
-            {raw && <PerformanceGroupCards raw={raw} groups={groups} revenue={revenue} nameOf={nameOf} />}
+            {raw && <PerformanceGroupCards raw={raw} groups={groups} revenue={revenue} nameOf={nameOf} personId={selected?.id} />}
           </div>
         </SheetContent>
       </Sheet>

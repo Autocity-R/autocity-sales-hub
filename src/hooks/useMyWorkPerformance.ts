@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { TIJDREGELS_SELECT, type Tijdregel } from "@/lib/tijdregels";
+import { gewerktVandaagSeconden } from "@/lib/mijnUren";
 
 /** Kalenderdatum in Europe/Amsterdam als "YYYY-MM-DD". */
 const amsDay = (d: Date) =>
@@ -59,14 +61,23 @@ export const useMyWorkPerformance = (discipline: "werkplaats" | "spuit") => {
     const monthStart = `${monthPrefix}-01`;
     const from = prevWeekStart < monthStart ? prevWeekStart : monthStart;
 
-    const { data: rows } = await supabase
-      .from("work_orders")
-      .select("id, status, parts, part, work_seconds, finished_at, approved_at, rejected_count")
-      .eq("discipline", discipline)
-      .eq("assigned_to", uid)
-      .in("status", ["afgerond", "goedgekeurd"])
-      .gte("finished_at", `${from}T00:00:00Z`)
-      .limit(1000);
+    const [{ data: rows }, { data: regels }] = await Promise.all([
+      supabase
+        .from("work_orders")
+        .select("id, status, parts, part, work_seconds, finished_at, approved_at, rejected_count")
+        .eq("discipline", discipline)
+        .eq("assigned_to", uid)
+        .in("status", ["afgerond", "goedgekeurd"])
+        .gte("finished_at", `${from}T00:00:00Z`)
+        .limit(1000),
+      // eigen tijdregels van vandaag (ook van klussen die een collega overnam)
+      (supabase as any)
+        .from("work_order_tijdregels")
+        .select(`${TIJDREGELS_SELECT}, work_order:work_orders!work_order_tijdregels_work_order_id_fkey(discipline)`)
+        .eq("user_id", uid)
+        .gte("gestart_op", new Date(Date.now() - 2 * 86400000).toISOString())
+        .limit(500),
+    ]);
 
     const acc = { ...EMPTY };
     for (const r of ((rows as any[]) || [])) {
@@ -77,7 +88,6 @@ export const useMyWorkPerformance = (discipline: "werkplaats" | "spuit") => {
 
       if (day === today) {
         acc.today += 1; acc.partsToday += parts;
-        acc.secondsToday += Number(r.work_seconds || 0);
       }
       if (day >= weekStart) { acc.week += 1; acc.partsWeek += parts; }
       else if (day >= prevWeekStart) { acc.prevWeek += 1; }
@@ -86,6 +96,10 @@ export const useMyWorkPerformance = (discipline: "werkplaats" | "spuit") => {
         acc.rejectedMonth += Number(r.rejected_count || 0);
       }
     }
+    // gewerkt vandaag: eigen tijdregels (binnen werktijd); klussen zonder tijdregels zoals voorheen
+    const mijnRegels = (((regels as any[]) || []) as (Tijdregel & { work_order?: { discipline?: string } | null })[])
+      .filter(r => !r.work_order || r.work_order.discipline === discipline);
+    acc.secondsToday = gewerktVandaagSeconden(((rows as any[]) || []), mijnRegels, now);
     setData(acc);
     setLoading(false);
   }, [discipline]);

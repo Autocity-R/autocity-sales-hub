@@ -1,4 +1,5 @@
-import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
+import { fairSeconds, fairSecondsByAssignee, uitvoerders } from "@/lib/performanceGroups";
+import { attachTijdregels, fetchTijdregelsSince, type Tijdregel } from "@/lib/tijdregels";
 import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
@@ -121,6 +122,8 @@ export interface RapOrder {
   started_at: string | null; finished_at: string | null; approved_at: string | null;
   is_rush: boolean | null; rejected_count: number | null; branch: string | null;
   origin: string | null; external_customer: any; part: string | null; parts: any; poets_type: string | null;
+  /** tijdregels per persoon (bouwstap 17), alleen als de order ze heeft */
+  tijdregels?: Tijdregel[] | null;
 }
 export interface RapIntake { id: string; vehicle_id: string | null; created_at: string; approved_at: string | null; status: string | null; branch: string | null }
 export interface RapVehicle {
@@ -157,7 +160,7 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
 
   const woSel = "id,vehicle_id,discipline,status,work_seconds,paused_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,external_customer,part,parts,poets_type";
 
-  const [bron, orders, intakes, vehicles, profiles] = await Promise.all([
+  const [bron, orders, intakes, vehicles, profiles, , tijdregels] = await Promise.all([
     fetchOmzetBron(histStart, histEnd, branch),
     fetchAllPages<RapOrder>((a, b) => bf(supabase.from("work_orders").select(woSel)
       .or(`created_at.gte.${woStart.toISOString()},and(discipline.eq.poets,finished_at.gte.${nlDayStart(dayStr(histStart))},finished_at.lt.${nlDayStart(dayStr(histEnd))}),and(discipline.eq.poets,finished_at.is.null,approved_at.gte.${nlDayStart(dayStr(histStart))},approved_at.lt.${nlDayStart(dayStr(histEnd))})`), branch).order("id").range(a, b)),
@@ -165,7 +168,9 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
     fetchAllPages<RapVehicle>((a, b) => bf(supabase.from("vehicles").select("id,branch,status,aangekomen_at,sold_date,delivery_date,b2b_delivered_at,details").gte("updated_at", histStart.toISOString()), branch).order("id").range(a, b)),
     supabase.from("profiles").select("id,first_name,last_name,poetser_type,actief"),
     loadWorkSchedule(),
+    fetchTijdregelsSince(woStart),
   ]);
+  attachTijdregels(orders, tijdregels);
 
   const vehicleIds = Array.from(new Set(orders.map(o => o.vehicle_id).filter(Boolean))) as string[];
   const vehicleInfo: RapRaw["vehicleInfo"] = {};
@@ -292,29 +297,32 @@ export function employeeRows(raw: RapRaw, from = raw.from, to = raw.to): Employe
     return map.get(id)!;
   };
   const ordersBy = new Map<string, RapOrder[]>();
+  // Per persoon telt de order mee bij iedereen met een tijdregel (alleen eigen uren);
+  // afkeur en delen blijven bij de uitvoerder (assigned_to), net als de omzet.
   raw.orders
-    .filter(o => o.assigned_to && PERF_DISC.includes(o.discipline || ""))
+    .filter(o => PERF_DISC.includes(o.discipline || ""))
     .filter(o => doneInPeriod(o, from, to))
-    .forEach(o => {
-      const e = ensure(o.assigned_to as string);
+    .forEach(o => uitvoerders(o).forEach(pid => {
+      const e = ensure(pid);
       if (o.discipline && !e.disciplines.includes(o.discipline)) e.disciplines.push(o.discipline);
       e.tasks += 1;
       ordersBy.set(e.id, [...(ordersBy.get(e.id) || []), o]);
+      if (pid !== o.assigned_to) return;
       e.rejects += Number(o.rejected_count || 0);
       if (o.discipline === "spuit") e.parts += partCount(o);
-    });
+    }));
   rev.forEach((v, id) => {
     if (!id) return;
     const e = ensure(id);
     e.revenue += v;
     regels.filter(r => r.medewerker_id === id && r.discipline).forEach(r => { if (!e.disciplines.includes(r.discipline!)) e.disciplines.push(r.discipline!); });
   });
-  map.forEach(e => { e.hours = fairSeconds(ordersBy.get(e.id) || []) / 3600; });
+  map.forEach(e => { e.hours = fairSeconds(ordersBy.get(e.id) || [], undefined, e.id) / 3600; });
   return Array.from(map.values()).map(e => ({
     ...e,
     revenue: Math.round(e.revenue * 100) / 100,
     // uitdeuken levert geen omzet op → omzet/uur alleen over uren met omzet-disciplines
-    perHour: div(e.revenue, fairSeconds((ordersBy.get(e.id) || []).filter(o => o.discipline !== "uitdeuk")) / 3600),
+    perHour: div(e.revenue, fairSeconds((ordersBy.get(e.id) || []).filter(o => o.discipline !== "uitdeuk"), undefined, e.id) / 3600),
     avgMinutes: div(e.hours * 60, e.tasks),
   })).sort((a, b) => b.revenue - a.revenue);
 }
@@ -333,7 +341,7 @@ export function performanceAansluiting(raw: RapRaw, from = raw.from, to = raw.to
 
 export function employeeOrders(raw: RapRaw, employeeId: string, limit = 60) {
   return raw.orders
-    .filter(o => o.assigned_to === employeeId && o.status !== "geannuleerd")
+    .filter(o => o.status !== "geannuleerd" && (o.assigned_to === employeeId || uitvoerders(o).includes(employeeId)))
     .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
     .slice(0, limit)
     .map(o => ({ ...o, vehicle: o.vehicle_id ? raw.vehicleInfo[o.vehicle_id] : undefined }));

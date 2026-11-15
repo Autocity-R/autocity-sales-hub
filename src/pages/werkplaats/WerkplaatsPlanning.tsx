@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
+import { overnameLabel, type Overname } from "@/lib/overnames";
 
 type Discipline = "werkplaats" | "spuit";
 
@@ -48,6 +49,8 @@ interface WO {
   planned_at: string | null;
   origin: string | null;
   external_customer: any | null;
+  /** "Samsom → Dani (overgenomen 14:32)" */
+  overname_label?: string | null;
   vehicle: {
     id: string;
     brand: string;
@@ -198,6 +201,9 @@ const TaskCard: React.FC<{
           {w.status === "gepauzeerd" && <AsPill tone="amber">⏸ gepauzeerd</AsPill>}
           {w.source && <AsPill tone="slate">{w.source}</AsPill>}
         </div>
+        {w.overname_label && (
+          <div className="mt-1.5 text-[11px] font-medium text-blue-700 truncate" title={w.overname_label}>{w.overname_label}</div>
+        )}
         {(w.started_at || w.source) && (
           <div className="mt-1.5 text-[11px] text-slate-400">
             {w.started_at && `gestart ${format(new Date(w.started_at), "HH:mm", { locale: nl })}`}
@@ -400,13 +406,30 @@ const WerkplaatsPlanning: React.FC = () => {
     const openRows = ((data as any) || []) as WO[];
     const doneRows = ((done as any) || []) as WO[];
 
-    const ids = Array.from(new Set([...openRows, ...doneRows].map(r => r.assigned_to).filter(Boolean))) as string[];
+    // overnames (wie nam over van wie) voor de kaarten — één query per 200 orders
+    const woIds = [...openRows, ...doneRows].map(r => r.id);
+    const overnames: Overname[] = [];
+    for (let i = 0; i < woIds.length; i += 200) {
+      const { data: ov } = await (supabase as any).from("work_order_overnames")
+        .select("work_order_id, van_user_id, naar_user_id, overgenomen_op").in("work_order_id", woIds.slice(i, i + 200));
+      overnames.push(...((ov as Overname[]) || []));
+    }
+    const ids = Array.from(new Set([
+      ...[...openRows, ...doneRows].map(r => r.assigned_to),
+      ...overnames.flatMap(o => [o.van_user_id, o.naar_user_id]),
+    ].filter(Boolean))) as string[];
     let pmap = new Map<string, Profile>();
     if (ids.length) {
       const { data: ps } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
       pmap = new Map(((ps as any[]) || []).map(p => [p.id, p as Profile]));
     }
 
+    if (overnames.length) {
+      const per = new Map<string, Overname[]>();
+      overnames.forEach(o => per.set(o.work_order_id, [...(per.get(o.work_order_id) || []), o]));
+      const nm = (uid: string | null) => nameOf(uid ? pmap.get(uid) : undefined);
+      [...openRows, ...doneRows].forEach(r => { r.overname_label = overnameLabel(per.get(r.id), nm); });
+    }
     setRows(openRows);
     setDoneToday(doneRows);
     setProfiles(pmap);

@@ -320,7 +320,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   };
 
   const handleTakeover = async (w: WO) => {
-    const { error } = await (supabase.rpc as any)("spuit_overnemen", { p_id: w.id });
+    const { error } = await (supabase.rpc as any)("werkorder_overnemen", { p_id: w.id });
     if (error) { toast({ title: "Overnemen lukt niet", description: error.message, variant: "destructive" }); load(); return; }
     toast({ title: "Overgenomen", description: "De klus staat nu op jouw naam. Druk op Verder om te beginnen." });
     setDetail(null);
