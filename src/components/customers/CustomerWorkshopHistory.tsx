@@ -125,8 +125,9 @@ const CustomerWorkshopHistory: React.FC<Props> = ({ contactId }) => {
             invoices.map((inv) => (
               <div key={inv.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
                 <div className="text-sm text-muted-foreground w-28">{fmtDate(inv.created_at)}</div>
-                <div className="flex-1 min-w-[10rem] font-mono text-sm">{inv.invoice_number || "—"}</div>
-                <div className="text-sm font-semibold">{eur(Number(inv.total) || 0)}</div>
+                <div className={`flex-1 min-w-[10rem] font-mono text-sm ${inv.document_type === "creditfactuur" ? "text-destructive" : ""}`}>{inv.invoice_number || "—"}</div>
+                {inv.document_type === "creditfactuur" && <Badge variant="destructive">Credit</Badge>}
+                <div className={`text-sm font-semibold ${inv.document_type === "creditfactuur" ? "text-destructive" : ""}`}>{eur(Number(inv.total) || 0)}</div>
                 <Badge variant="outline">{inv.status || "concept"}</Badge>
                 <Button size="sm" variant="outline" onClick={() => openInvoice(inv.pdf_path)}>
                   PDF openen

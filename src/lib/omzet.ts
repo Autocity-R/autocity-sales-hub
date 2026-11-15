@@ -8,7 +8,8 @@
  *  - omzet_datum (Europe/Amsterdam): intern = goedkeuringsdag laatste gekoppelde order,
  *    poets_intern = werkdag laatste poetsbeurt, overig = factuurdatum (created_at).
  *  - Koppeling: source_work_order_ids als niet leeg, anders work_order_id.
- *  - Telregel: telt_niet_mee = false en (status <> concept OF automatische interne factuur).
+ *  - Telregel: telt_niet_mee = false en (status <> concept OF automatische interne factuur
+ *    OF creditfactuur). Een creditfactuur telt in de maand van crediteren (NL-tijd).
  *  - Toerekening: schadeherstel per deel (€300 × delen), anders gelijk verdeeld over de
  *    gekoppelde orders; zonder koppeling → "niet toegewezen" (medewerker null).
  */
@@ -23,6 +24,8 @@ export interface OmzetRegel {
   telt_mee: boolean; telt_niet_mee: boolean; telt_niet_mee_reden: string | null;
   gekoppeld: boolean; work_order_id: string | null; discipline: string | null;
   medewerker_id: string | null; aandeel_delen: number | null; bedrag: number;
+  /** 'factuur' | 'creditfactuur' — client-side verrijkt uit de facturen (niet uit de RPC). */
+  document_type?: string | null;
 }
 
 const NL_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -39,20 +42,24 @@ export function linkedOrderIds(src: unknown, workOrderId: string | null | undefi
 }
 
 export interface InvoiceForRules {
-  invoice_kind: string | null; status: string | null; telt_niet_mee?: boolean | null;
+  invoice_kind: string | null; status: string | null; telt_niet_mee?: boolean | null; document_type?: string | null;
 }
-/** Telregel. Automatische interne concepten tellen wél, handmatige concepten niet. */
+/** Telregel. Automatische interne concepten en creditfacturen tellen altijd, handmatige concepten niet. */
 export const countsAsRevenue = (inv: InvoiceForRules) =>
-  !inv.telt_niet_mee && (inv.status !== "concept" || ["intern", "poets_intern"].includes(inv.invoice_kind || ""));
+  !inv.telt_niet_mee && (inv.document_type === "creditfactuur" || inv.status !== "concept" || ["intern", "poets_intern"].includes(inv.invoice_kind || ""));
 
 export interface LinkedOrderDates { approved_at: string | null; finished_at: string | null }
 /** omzet_datum volgens de regels (spiegel van de databasetrigger). */
-export function omzetDatum(kind: string | null, createdAt: string, linked: LinkedOrderDates[]): string {
+export function omzetDatum(kind: string | null, createdAt: string, linked: LinkedOrderDates[], documentType?: string | null): string {
+  if (documentType === "creditfactuur") return nlDate(createdAt);
   const max = (xs: (string | null)[]) => xs.filter(Boolean).sort((a, b) => +new Date(a!) - +new Date(b!)).pop() || null;
   if (kind === "intern") return nlDate(max(linked.map(o => o.approved_at)) || createdAt);
   if (kind === "poets_intern") return nlDate(max(linked.map(o => o.finished_at || o.approved_at)) || createdAt);
   return nlDate(createdAt);
 }
+
+/** Afronden op centen, symmetrisch rond nul (zoals Postgres round): −x rondt als x. */
+export const round2Sym = (n: number) => Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-9) / 100;
 
 export interface AllocOrder { id: string; discipline: string | null; assigned_to: string | null; parts?: unknown }
 /** Toerekening van één factuur naar medewerkers (spiegel van omzet_regels). */
@@ -63,7 +70,7 @@ export function allocate(subtotal: number, tak: Tak, orders: AllocOrder[]): { wo
   const g = w.reduce((a, b) => a + b, 0);
   return orders.map((o, i) => ({
     work_order_id: o.id, medewerker_id: o.assigned_to,
-    bedrag: Math.round((subtotal * w[i] / g) * 100) / 100,
+    bedrag: round2Sym(subtotal * w[i] / g),
   }));
 }
 
@@ -98,10 +105,12 @@ export function takDetails(regels: OmzetRegel[]): Record<Tak, TakDetail> {
   invoicesOf(counted).forEach(i => {
     const d = out[i.tak];
     const amt = Number(i.subtotal || 0);
-    d.total += amt; d.invoices += 1;
+    d.total += amt;
+    if (i.document_type !== "creditfactuur") d.invoices += 1; // een credit is geen extra order
     if (["intern", "poets_intern", "poets_pending"].includes(i.invoice_kind || "")) d.intern += amt; else d.extern += amt;
   });
-  counted.forEach(r => { out[r.tak].parts += r.tak === "schadeherstel" ? Number(r.aandeel_delen || 1) : 1; });
+  counted.filter(r => r.document_type !== "creditfactuur")
+    .forEach(r => { out[r.tak].parts += r.tak === "schadeherstel" ? Number(r.aandeel_delen || 1) : 1; });
   (Object.keys(out) as Tak[]).forEach(k => { out[k].total = r2(out[k].total); out[k].intern = r2(out[k].intern); out[k].extern = r2(out[k].extern); });
   return out;
 }

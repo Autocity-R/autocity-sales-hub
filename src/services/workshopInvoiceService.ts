@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generatePdfFromHtml } from "@/services/contractPdfService";
+import { creditDocumentTekst } from "@/lib/creditfactuur";
 
 export interface InvoiceLine { description: string; amount: number }
 export interface InvoiceCustomer {
@@ -74,8 +75,16 @@ const esc = (s?: string | null) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Factuur-HTML in huisstijl — gebruikt voor zowel live-preview als PDF-generatie. */
-export const renderInvoiceHtml = (d: InvoiceDraft & { invoice_date?: string }): string => {
-  const { subtotal, vat, total } = calcTotals(d.lines);
+export const renderInvoiceHtml = (d: InvoiceDraft & {
+  invoice_date?: string;
+  /** 'creditfactuur' → titel CREDITFACTUUR, verwijzing naar het origineel */
+  document_type?: string | null;
+  credit_tekst?: string | null;
+  /** opgeslagen bedragen gebruiken (creditfactuur: btw zoals in het origineel) */
+  totals?: { subtotal: number; vat: number; total: number } | null;
+}): string => {
+  const { subtotal, vat, total } = d.totals || calcTotals(d.lines);
+  const isCredit = d.document_type === "creditfactuur";
   const date = d.invoice_date || new Date().toLocaleDateString("nl-NL");
   const nummer = d.invoice_number || "CONCEPT";
   const rows = d.lines
@@ -97,13 +106,14 @@ export const renderInvoiceHtml = (d: InvoiceDraft & { invoice_date?: string }): 
         </div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;letter-spacing:1px">FACTUUR</div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:1px${isCredit ? ";color:#b91c1c" : ""}">${isCredit ? "CREDITFACTUUR" : "FACTUUR"}</div>
         <div style="font-size:11.5px;color:#4b5563;line-height:1.6;margin-top:4px">
-          Factuurnummer: <strong>${esc(nummer)}</strong><br/>
-          Factuurdatum: <strong>${esc(date)}</strong>
+          ${isCredit ? "Creditfactuurnummer" : "Factuurnummer"}: <strong>${esc(nummer)}</strong><br/>
+          ${isCredit ? "Datum" : "Factuurdatum"}: <strong>${esc(date)}</strong>
         </div>
       </div>
     </div>
+    ${isCredit && d.credit_tekst ? `<div style="margin-top:14px;padding:10px 14px;border:1px solid #fecaca;background:#fef2f2;border-radius:8px;font-size:12px;color:#991b1b">${esc(d.credit_tekst)}</div>` : ""}
 
     <div style="display:flex;gap:16px;margin-top:20px">
       <div style="flex:1;background:#f7f8fa;border:1px solid #e6e8ec;border-radius:8px;padding:12px 14px">
@@ -146,7 +156,7 @@ export const renderInvoiceHtml = (d: InvoiceDraft & { invoice_date?: string }): 
     </div>
 
     <div style="margin-top:24px;padding:12px 14px;background:#f7f8fa;border:1px solid #e6e8ec;border-radius:8px;font-size:12px;color:#374151">
-      Gelieve te betalen binnen 14 dagen o.v.v. het factuurnummer.
+      ${isCredit ? "Dit is een creditfactuur. Het bedrag wordt verrekend of aan u terugbetaald." : "Gelieve te betalen binnen 14 dagen o.v.v. het factuurnummer."}
     </div>
 
     <div style="margin-top:18px;border-top:1px solid #e6e8ec;padding-top:10px;font-size:10.5px;color:#6b7280;text-align:center;line-height:1.6">
@@ -316,7 +326,11 @@ export const queueInternalInvoiceEmail = async (p: {
   lines: InvoiceLine[];
   total: number;
   pdfBase64: string;
+  /** creditfactuur: zelfde route, alleen titel/onderwerp anders */
+  credit?: boolean;
+  creditTekst?: string | null;
 }) => {
+  const soort = p.credit ? "Interne creditfactuur" : "Interne factuur";
   const rows = p.lines
     .map(
       (l) =>
@@ -328,7 +342,8 @@ export const queueInternalInvoiceEmail = async (p: {
     <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6e8ec;border-radius:10px;overflow:hidden">
       <div style="background:#111827;color:#fff;padding:16px 20px;font-size:15px;font-weight:700">${COMPANY.name}</div>
       <div style="padding:20px;font-size:13.5px;color:#111827;line-height:1.7">
-        <p style="margin:0 0 12px">Interne factuur aan Autocity Automotive Group B.V.</p>
+        <p style="margin:0 0 12px">${soort} aan Autocity Automotive Group B.V.</p>
+        ${p.credit && p.creditTekst ? `<p style="margin:0 0 12px;color:#991b1b">${esc(p.creditTekst)}</p>` : ""}
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <tr><td style="padding:5px 0;color:#6b7280">Factuurnummer</td><td style="padding:5px 0;text-align:right"><strong>${esc(p.invoiceNumber)}</strong></td></tr>
           <tr><td style="padding:5px 0;color:#6b7280">Kenteken</td><td style="padding:5px 0;text-align:right">${esc(p.plate)}</td></tr>
@@ -350,7 +365,7 @@ export const queueInternalInvoiceEmail = async (p: {
     payload: {
       senderEmail: "werkplaats@auto-city.nl",
       to: [INTERNAL_INVOICE_RECIPIENT],
-      subject: `Interne factuur ${p.invoiceNumber} — ${p.plate}`,
+      subject: `${soort} ${p.invoiceNumber} — ${p.plate}`,
       htmlBody,
       attachments: [
         { filename: `${p.invoiceNumber}.pdf`, content: p.pdfBase64, base64Content: p.pdfBase64 },
@@ -368,17 +383,29 @@ export const queueInternalInvoiceEmail = async (p: {
 export const dispatchPendingInternalInvoices = async (): Promise<number> => {
   const { data, error } = await (supabase as any)
     .from("workshop_invoices")
-    .select("id, invoice_number, customer, vehicle, lines, total, branch, created_at")
-    .eq("invoice_kind", "intern")
+    .select("id, invoice_number, customer, vehicle, lines, subtotal, vat, total, branch, created_at, invoice_kind, document_type, credit_van_invoice_id, credit_reden")
     .eq("status", "concept")
+    // interne facturen + interne/poets-creditfacturen (de poets-maandfactuur zelf gaat via de edge function)
+    .or("invoice_kind.eq.intern,and(invoice_kind.eq.poets_intern,document_type.eq.creditfactuur)")
     .order("created_at", { ascending: true })
     .limit(20);
   if (error || !data?.length) return 0;
+
+  // originelen van creditfacturen (nummer + datum voor de verwijzing op het document)
+  const origIds = Array.from(new Set((data as any[]).map((i) => i.credit_van_invoice_id).filter(Boolean)));
+  const originelen = new Map<string, { invoice_number: string | null; created_at: string }>();
+  if (origIds.length) {
+    const { data: o } = await (supabase as any).from("workshop_invoices").select("id, invoice_number, created_at").in("id", origIds);
+    (o || []).forEach((x: any) => originelen.set(x.id, x));
+  }
 
   let sent = 0;
   for (const inv of data as any[]) {
     try {
       const lines: InvoiceLine[] = Array.isArray(inv.lines) ? inv.lines : [];
+      const credit = inv.document_type === "creditfactuur";
+      const orig = credit ? originelen.get(inv.credit_van_invoice_id) : null;
+      const creditTekst = credit && orig ? creditDocumentTekst(orig.invoice_number, orig.created_at, inv.credit_reden || "") : null;
       const html = renderInvoiceHtml({
         invoice_number: inv.invoice_number,
         invoice_date: new Date(inv.created_at).toLocaleDateString("nl-NL"),
@@ -386,6 +413,9 @@ export const dispatchPendingInternalInvoices = async (): Promise<number> => {
         vehicle: inv.vehicle || {},
         lines,
         branch: inv.branch,
+        document_type: inv.document_type,
+        credit_tekst: creditTekst,
+        totals: credit ? { subtotal: Number(inv.subtotal) || 0, vat: Number(inv.vat) || 0, total: Number(inv.total) || 0 } : null,
       });
       const blob = await generatePdfFromHtml(html);
       const pdfPath = `${inv.invoice_number}.pdf`;
@@ -397,10 +427,12 @@ export const dispatchPendingInternalInvoices = async (): Promise<number> => {
 
       await queueInternalInvoiceEmail({
         invoiceNumber: inv.invoice_number,
-        plate: inv.vehicle?.license_number || "",
+        plate: inv.vehicle?.license_number || inv.vehicle?.description || "",
         lines,
         total: Number(inv.total) || 0,
         pdfBase64,
+        credit,
+        creditTekst,
       });
 
       await (supabase as any)
@@ -422,17 +454,92 @@ export const resendInternalInvoice = async (inv: {
   vehicle: any;
   lines: any;
   total: number;
+  document_type?: string | null;
 }) => {
   if (!inv.pdf_path || !inv.invoice_number) throw new Error("Geen PDF beschikbaar");
   const pdfBase64 = await getInvoicePdfBase64(inv.pdf_path);
   if (!pdfBase64) throw new Error("Geen PDF beschikbaar");
   await queueInternalInvoiceEmail({
     invoiceNumber: inv.invoice_number,
-    plate: inv.vehicle?.license_number || "",
+    plate: inv.vehicle?.license_number || inv.vehicle?.description || "",
     lines: Array.isArray(inv.lines) ? inv.lines : [],
     total: Number(inv.total) || 0,
     pdfBase64,
+    credit: inv.document_type === "creditfactuur",
   });
+};
+
+/* ------------------------------------------------------------------ */
+/*  Creditfacturen (alleen via RPC factuur_crediteren)                 */
+/* ------------------------------------------------------------------ */
+
+export type CreditModus = "volledig" | "regels" | "bedrag";
+export interface CreditRequest {
+  invoiceId: string;
+  modus: CreditModus;
+  regels?: { index: number; bedrag?: number }[];
+  bedragExcl?: number | null;
+  reden: string;
+}
+export interface CreditResult {
+  dry_run: boolean;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  status: string;
+  invoice_kind: string;
+  origineel: { id: string; invoice_number: string; datum: string; subtotal: number; vat: number; total: number; payment_status: string | null };
+  regels: (InvoiceLine & { credit_van_regel?: number })[];
+  subtotal: number; vat: number; total: number;
+  al_gecrediteerd_excl: number;
+  nog_te_crediteren_voor: number;
+  nog_te_crediteren_na: number;
+  volledig_gecrediteerd_na: boolean;
+  document_tekst: string;
+}
+
+/** Crediteren of (dryRun) alleen doorrekenen — dry-run verbruikt geen factuurnummer en slaat niets op. */
+export const crediteerFactuur = async (req: CreditRequest, dryRun: boolean): Promise<CreditResult> => {
+  const { data, error } = await (supabase as any).rpc("factuur_crediteren", {
+    p_invoice_id: req.invoiceId,
+    p_modus: req.modus,
+    p_regels: req.modus === "regels" ? req.regels || [] : null,
+    p_bedrag_excl: req.modus === "bedrag" ? req.bedragExcl ?? null : null,
+    p_reden: req.reden,
+    p_dry_run: dryRun,
+  });
+  if (error) throw error;
+  return data as CreditResult;
+};
+
+/** PDF van een (externe) creditfactuur maken en opslaan onder het pdf_path dat de RPC zette. */
+export const saveCreditPdf = async (p: {
+  invoice_number: string;
+  created_at?: string | null;
+  customer: InvoiceCustomer;
+  vehicle: InvoiceVehicle;
+  lines: InvoiceLine[];
+  subtotal: number; vat: number; total: number;
+  branch?: string | null;
+  credit_tekst: string;
+}): Promise<{ blob: Blob; pdfPath: string }> => {
+  const html = renderInvoiceHtml({
+    invoice_number: p.invoice_number,
+    invoice_date: new Date(p.created_at || Date.now()).toLocaleDateString("nl-NL"),
+    customer: p.customer || { name: "" },
+    vehicle: p.vehicle || {},
+    lines: p.lines,
+    branch: p.branch,
+    document_type: "creditfactuur",
+    credit_tekst: p.credit_tekst,
+    totals: { subtotal: p.subtotal, vat: p.vat, total: p.total },
+  });
+  const blob = await generatePdfFromHtml(html);
+  const pdfPath = `${p.invoice_number}.pdf`;
+  const { error } = await supabase.storage
+    .from("workshop-invoices")
+    .upload(pdfPath, blob, { contentType: "application/pdf", upsert: true });
+  if (error) throw error;
+  return { blob, pdfPath };
 };
 /* ------------------------------------------------------------------ */
 /*  Handmatige facturen (los van de automatische goedkeuringsflow)     */

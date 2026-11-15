@@ -135,7 +135,8 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
 
   return {
     from, to, prevFrom, prevTo, sixM, bron,
-    invoicesOpen: bron.links.filter(i => i.status !== "verstuurd" && !["intern", "poets_intern"].includes(i.invoice_kind || "") && !i.telt_niet_mee),
+    // alleen handmatige concepten: 'definitief' (externe creditfactuur, zelf mailen) is niet "mislukt"
+    invoicesOpen: bron.links.filter(i => i.status === "concept" && i.document_type !== "creditfactuur" && !["intern", "poets_intern"].includes(i.invoice_kind || "") && !i.telt_niet_mee),
     orders, ordersPrev, ordersOpen, ordersHist: ordersAll,
     intakes, claims,
     loanCarsOut: (loans.data || []).length,

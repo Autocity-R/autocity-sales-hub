@@ -10,6 +10,7 @@ export interface InvoiceLink {
   work_order_id: string | null; source_work_order_ids: unknown; subtotal: number | null;
   telt_niet_mee: boolean | null; telt_niet_mee_reden: string | null; tak: string | null;
   omzet_datum: string | null; created_at: string; customer: any; vehicle: any;
+  document_type?: string | null; credit_van_invoice_id?: string | null; credit_reden?: string | null; gecrediteerd_door?: string | null;
 }
 export interface ExternOpen {
   id: string; approved_at: string | null; discipline: string | null; klant: string | null; vehicle_id: string | null;
@@ -25,6 +26,8 @@ export interface OmzetBron {
   poetsBeurten: PoetsBeurt[];
   poetsGefactureerd: Set<string>;
   externZonderFactuur: ExternOpen[];
+  /** Namen van medewerkers (voor controlelijsten, bv. wie crediteerde). */
+  namen?: Record<string, string>;
 }
 
 const d2 = (n: number) => String(n).padStart(2, "0");
@@ -41,7 +44,7 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
       .rpc("omzet_regels", { p_van: van, p_tot: tot, p_branch: pBranch })
       .order("invoice_id").order("work_order_id", { nullsFirst: true }).range(a, b)),
     fetchAllPages<InvoiceLink>((a, b) => (supabase as any).from("workshop_invoices")
-      .select("id,invoice_number,invoice_kind,status,work_order_id,source_work_order_ids,subtotal,telt_niet_mee,telt_niet_mee_reden,tak,omzet_datum,created_at,customer,vehicle")
+      .select("id,invoice_number,invoice_kind,status,work_order_id,source_work_order_ids,subtotal,telt_niet_mee,telt_niet_mee_reden,tak,omzet_datum,created_at,customer,vehicle,document_type,credit_van_invoice_id,credit_reden,gecrediteerd_door")
       .order("created_at").range(a, b)),
     fetchAllPages<any>((a, b) => {
       let q = supabase.from("work_orders").select("id,assigned_to,vehicle_id,branch,finished_at,approved_at")
@@ -57,8 +60,14 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
       if (pBranch) q = q.eq("branch", pBranch);
       return q.order("id").range(a, b);
     }),
-    fetchAllPages<{ id: string; poetser_type: string | null }>((a, b) => supabase.from("profiles").select("id,poetser_type").order("id").range(a, b)),
+    fetchAllPages<{ id: string; poetser_type: string | null; first_name: string | null; last_name: string | null }>((a, b) => supabase.from("profiles").select("id,poetser_type,first_name,last_name").order("id").range(a, b)),
   ]);
+
+  // creditfacturen herkenbaar maken in de regels (de RPC levert alleen factuurvelden)
+  const docType = new Map(links.map(i => [i.id, i.document_type || "factuur"]));
+  regels.forEach(r => { r.document_type = docType.get(r.invoice_id) || "factuur"; });
+  const namen: Record<string, string> = {};
+  profiles.forEach(p => { const n = `${p.first_name || ""} ${p.last_name || ""}`.trim(); if (n) namen[p.id] = n; });
 
   const poetsType = new Map(profiles.map(p => [p.id, p.poetser_type]));
   const poetsGefactureerd = new Set<string>();
@@ -86,7 +95,7 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
   }
 
   return {
-    van, tot, regels, links, poetsBeurten, poetsGefactureerd,
+    van, tot, regels, links, poetsBeurten, poetsGefactureerd, namen,
     externZonderFactuur: extOpen.map((o: any) => ({
       id: o.id, approved_at: o.approved_at, discipline: o.discipline,
       klant: o.external_customer?.name || o.external_customer?.company || null,
@@ -114,6 +123,8 @@ export interface Controle {
   conceptenHandmatig: InvoiceLink[];
   nietMee: InvoiceLink[];
   poetsZonderUitvoerder: PoetsBeurt[];
+  /** Creditfacturen met omzetdatum in de periode (credit telt in de creditmaand). */
+  creditfacturen: (InvoiceLink & { origineel: string | null; door: string | null })[];
 }
 export function controle(bron: OmzetBron, van: string, tot: string): Controle {
   const inP = bron.regels.filter(r => r.omzet_datum >= van && r.omzet_datum < tot);
@@ -122,9 +133,16 @@ export function controle(bron: OmzetBron, van: string, tot: string): Controle {
   return {
     losZonderWerkorder: Array.from(los.values()),
     externZonderFactuur: bron.externZonderFactuur,
-    conceptenHandmatig: bron.links.filter(i => i.status === "concept" && !["intern", "poets_intern"].includes(i.invoice_kind || "") && !i.telt_niet_mee),
+    conceptenHandmatig: bron.links.filter(i => i.status === "concept" && i.document_type !== "creditfactuur" && !["intern", "poets_intern"].includes(i.invoice_kind || "") && !i.telt_niet_mee),
     nietMee: bron.links.filter(i => i.telt_niet_mee),
     poetsZonderUitvoerder: poetsZonderUitvoerder(bron, van, tot),
+    creditfacturen: bron.links
+      .filter(i => i.document_type === "creditfactuur" && (i.omzet_datum || "") >= van && (i.omzet_datum || "") < tot)
+      .map(i => ({
+        ...i,
+        origineel: bron.links.find(o => o.id === i.credit_van_invoice_id)?.invoice_number || null,
+        door: (i.gecrediteerd_door && bron.namen?.[i.gecrediteerd_door]) || null,
+      })),
   };
 }
 

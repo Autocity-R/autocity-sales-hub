@@ -6,7 +6,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, Search, ExternalLink, Send, Pencil, Plus, Check, Calculator } from "lucide-react";
+import { FileText, Loader2, Search, ExternalLink, Send, Pencil, Plus, Check, Calculator, Undo2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,10 +15,12 @@ import { fetchAllPages } from "@/lib/fetchAllPages";
 import { countsAsRevenue, nlDate } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr } from "@/services/omzetService";
 import { NogTeFacturerenExtern } from "@/components/werkplaats/NogTeFacturerenExtern";
+import CrediteerFactuurDialog from "@/components/werkplaats/CrediteerFactuurDialog";
+import { isCredit, creditInfo, crediteerbaar, creditBadge, betaalLabel, mayCrediteer, creditDocumentTekst, type CreditInfo } from "@/lib/creditfactuur";
 import { buildHaystack, matchesSearch, amountTokens } from "@/lib/searchNormalize";
 import {
   eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
-  dispatchPendingInternalInvoices, resendInternalInvoice, setInvoicePaymentStatus,
+  dispatchPendingInternalInvoices, resendInternalInvoice, setInvoicePaymentStatus, saveCreditPdf,
 } from "@/services/workshopInvoiceService";
 
 interface InvoiceRow {
@@ -27,7 +29,11 @@ interface InvoiceRow {
   work_order_id: string | null; invoice_kind: string | null; subtotal: number | null;
   payment_status: string | null;
   omzet_datum: string | null; telt_niet_mee: boolean | null; tak: string | null;
+  vat: number | null; vehicle_id: string | null;
+  document_type: string | null; credit_van_invoice_id: string | null; credit_reden: string | null;
 }
+
+const EMPTY_INFO: CreditInfo = { n: 0, gecrediteerdExcl: 0, gecrediteerdIncl: 0, nogExcl: 0, nogVat: 0, nogIncl: 0, volledig: false };
 
 const WerkplaatsFacturen: React.FC = () => {
   const roleAccess = useRoleAccess();
@@ -36,12 +42,14 @@ const WerkplaatsFacturen: React.FC = () => {
   const mayTogglePaid = !readOnly || roleAccess.isOperationeelDirecteur();
   const { userRole, isAdmin } = useAuth();
   const mayCreateManual = isAdmin || featureAccess["handmatige-facturen"](userRole);
+  const mayCredit = mayCrediteer(userRole, isAdmin);
+  const [creditFor, setCreditFor] = useState<InvoiceRow | null>(null);
   const navigate = useNavigate();
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<InvoiceDraft | null>(null);
-  const [tab, setTab] = useState<"intern" | "extern" | "poets">("extern");
+  const [tab, setTab] = useState<"intern" | "extern" | "poets" | "credit">("extern");
   const [poetsOpen, setPoetsOpen] = useState({ count: 0, bedrag: 0 });
 
   const load = async () => {
@@ -49,7 +57,7 @@ const WerkplaatsFacturen: React.FC = () => {
     try {
       const data = await fetchAllPages<InvoiceRow>((a, b) => (supabase as any)
         .from("workshop_invoices")
-        .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, pdf_path, branch, work_order_id, invoice_kind, payment_status, omzet_datum, telt_niet_mee, tak")
+        .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, vat, pdf_path, branch, work_order_id, vehicle_id, invoice_kind, payment_status, omzet_datum, telt_niet_mee, tak, document_type, credit_van_invoice_id, credit_reden")
         .order("created_at", { ascending: false })
         .range(a, b));
       setRows(data);
@@ -85,15 +93,40 @@ const WerkplaatsFacturen: React.FC = () => {
     }
   };
 
+  // afgeleid per origineel: gecrediteerd / nog te crediteren (niets opgeslagen op het origineel)
+  const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
+  const infoOf = useMemo(() => {
+    const credits = new Map<string, InvoiceRow[]>();
+    rows.filter(isCredit).forEach((c) => {
+      if (!c.credit_van_invoice_id) return;
+      credits.set(c.credit_van_invoice_id, [...(credits.get(c.credit_van_invoice_id) || []), c]);
+    });
+    const m = new Map<string, CreditInfo>();
+    rows.filter((r) => !isCredit(r)).forEach((r) => {
+      m.set(r.id, creditInfo(
+        { subtotal: Number(r.subtotal) || 0, vat: Number(r.vat) || 0, total: Number(r.total) || 0 },
+        (credits.get(r.id) || []).map((c) => ({ subtotal: Number(c.subtotal) || 0, vat: Number(c.vat) || 0, total: Number(c.total) || 0 })),
+      ));
+    });
+    return m;
+  }, [rows]);
+  const asOrig = (r: InvoiceRow) => ({
+    invoice_kind: r.invoice_kind, document_type: r.document_type, status: r.status, telt_niet_mee: r.telt_niet_mee,
+    payment_status: r.payment_status, subtotal: Number(r.subtotal) || 0, vat: Number(r.vat) || 0, total: Number(r.total) || 0,
+  });
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    const base = rows.filter((r) => (r.invoice_kind === "poets_intern" ? "poets" : r.invoice_kind === "intern" ? "intern" : "extern") === tab);
+    const base = rows.filter((r) => tab === "credit"
+      ? isCredit(r)
+      : (r.invoice_kind === "poets_intern" ? "poets" : r.invoice_kind === "intern" ? "intern" : "extern") === tab);
     if (!s) return base;
     return base.filter((r) => {
       const c = r.customer || {};
       const v = r.vehicle || {};
       const hay = buildHaystack([
-        r.invoice_number, r.status, r.payment_status,
+        r.invoice_number, r.status, r.payment_status, isCredit(r) ? "credit creditfactuur" : "",
+        r.credit_reden, r.credit_van_invoice_id ? byId.get(r.credit_van_invoice_id)?.invoice_number : "",
         c.name, c.email, c.phone, c.street, c.house_number, c.postal_code, c.city, c.address,
         v.license_number, v.brand, v.model, v.vin, v.year, v.mileage,
         ...amountTokens(r.total), ...amountTokens(r.subtotal),
@@ -101,7 +134,7 @@ const WerkplaatsFacturen: React.FC = () => {
       ]);
       return matchesSearch(hay, q);
     });
-  }, [rows, q, tab]);
+  }, [rows, q, tab, byId]);
 
   // Maandtotalen op omzetdatum (NL) met dezelfde telregel als alle omzetschermen
   const monthTotals = useMemo(() => {
@@ -109,26 +142,40 @@ const WerkplaatsFacturen: React.FC = () => {
     const inMonth = (r: InvoiceRow) => (r.omzet_datum || nlDate(r.created_at)).slice(0, 7) === month;
     const counted = rows.filter((r) => inMonth(r) && countsAsRevenue(r));
     const sum = (xs: InvoiceRow[]) => xs.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    const credits = counted.filter(isCredit);
     return {
+      credit: { extern: sum(credits.filter((r) => !["intern", "poets_intern"].includes(r.invoice_kind || ""))), intern: sum(credits.filter((r) => r.invoice_kind === "intern")), poets: sum(credits.filter((r) => r.invoice_kind === "poets_intern")) },
       intern: sum(counted.filter((r) => r.invoice_kind === "intern")),
       extern: sum(counted.filter((r) => !["intern", "poets_intern"].includes(r.invoice_kind || ""))),
       poets: sum(counted.filter((r) => r.invoice_kind === "poets_intern")),
-      concepten: rows.filter((r) => r.status === "concept" && !["intern", "poets_intern"].includes(r.invoice_kind || "") && !r.telt_niet_mee),
+      concepten: rows.filter((r) => r.status === "concept" && !isCredit(r) && !["intern", "poets_intern"].includes(r.invoice_kind || "") && !r.telt_niet_mee),
     };
   }, [rows]);
 
   const openPdf = async (r: InvoiceRow) => {
-    if (!r.pdf_path) { toast({ title: "Geen PDF beschikbaar", description: "Deze factuur is nog een concept." }); return; }
-    const url = await getInvoiceSignedUrl(r.pdf_path);
+    if (!r.pdf_path) { toast({ title: "Geen PDF beschikbaar", description: isCredit(r) ? "De creditfactuur wordt nog naar de administratie gestuurd." : "Deze factuur is nog een concept." }); return; }
+    let url = await getInvoiceSignedUrl(r.pdf_path);
+    if (!url && isCredit(r) && r.invoice_number) {
+      // externe creditfactuur waarvan het opslaan van de PDF eerder mislukte: opnieuw maken
+      const orig = r.credit_van_invoice_id ? byId.get(r.credit_van_invoice_id) : null;
+      try {
+        await saveCreditPdf({
+          invoice_number: r.invoice_number, created_at: r.created_at, customer: r.customer || { name: "" }, vehicle: r.vehicle || {},
+          lines: Array.isArray(r.lines) ? r.lines : [], subtotal: Number(r.subtotal) || 0, vat: Number(r.vat) || 0, total: Number(r.total) || 0,
+          branch: r.branch, credit_tekst: creditDocumentTekst(orig?.invoice_number || null, orig?.created_at || r.created_at, r.credit_reden || ""),
+        });
+        url = await getInvoiceSignedUrl(r.pdf_path);
+      } catch { /* melding hieronder */ }
+    }
     if (url) window.open(url, "_blank");
     else toast({ title: "PDF kon niet worden geopend", variant: "destructive" });
   };
 
   const resend = async (r: InvoiceRow) => {
     try {
-      if (r.invoice_kind === "intern") {
+      if (r.invoice_kind === "intern" || (isCredit(r) && r.invoice_kind === "poets_intern")) {
         await resendInternalInvoice(r as any);
-        toast({ title: "Interne factuur opnieuw in de mailwachtrij geplaatst" });
+        toast({ title: `${isCredit(r) ? "Interne creditfactuur" : "Interne factuur"} opnieuw in de mailwachtrij geplaatst` });
         return;
       }
       const pdfBase64 = r.pdf_path ? await getInvoicePdfBase64(r.pdf_path) : null;
@@ -168,9 +215,9 @@ const WerkplaatsFacturen: React.FC = () => {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {[
-            { label: "Intern deze maand (excl. btw)", v: eur(monthTotals.intern) },
-            { label: "Extern deze maand (excl. btw)", v: eur(monthTotals.extern) },
-            { label: "Poets gefactureerd deze maand", v: eur(monthTotals.poets), sub: `+ ${eur(poetsOpen.bedrag)} nog op maandfactuur (${poetsOpen.count} beurten, factuur volgt op de 1e)` },
+            { label: "Intern deze maand (excl. btw)", v: eur(monthTotals.intern), sub: monthTotals.credit.intern ? `waarvan creditfacturen ${eur(monthTotals.credit.intern)}` : undefined },
+            { label: "Extern deze maand (excl. btw)", v: eur(monthTotals.extern), sub: monthTotals.credit.extern ? `waarvan creditfacturen ${eur(monthTotals.credit.extern)}` : undefined },
+            { label: "Poets gefactureerd deze maand", v: eur(monthTotals.poets), sub: `+ ${eur(poetsOpen.bedrag)} nog op maandfactuur (${poetsOpen.count} beurten, factuur volgt op de 1e)${monthTotals.credit.poets ? ` · waarvan creditfacturen ${eur(monthTotals.credit.poets)}` : ""}` },
             { label: "Handmatige concepten (tellen niet mee)", v: `${monthTotals.concepten.length} · ${eur(monthTotals.concepten.reduce((s, r) => s + (Number(r.subtotal) || 0), 0))}` },
           ].map((x) => (
             <div key={x.label} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
@@ -180,7 +227,7 @@ const WerkplaatsFacturen: React.FC = () => {
             </div>
           ))}
         </div>
-        <p className="-mt-2 mb-4 text-[11px] text-slate-500">Geteld op omzetdatum: interne facturen op de goedkeuringsdag, poets op de werkdag van de beurten, overige op factuurdatum.</p>
+        <p className="-mt-2 mb-4 text-[11px] text-slate-500">Geteld op omzetdatum: interne facturen op de goedkeuringsdag, poets op de werkdag van de beurten, overige op factuurdatum. Creditfacturen tellen in de maand van crediteren.</p>
 
         <div className="mb-4">
           <NogTeFacturerenExtern onChanged={load} />
@@ -200,6 +247,7 @@ const WerkplaatsFacturen: React.FC = () => {
               <Button size="sm" variant={tab === "extern" ? "default" : "outline"} onClick={() => setTab("extern")}>Extern</Button>
               <Button size="sm" variant={tab === "intern" ? "default" : "outline"} onClick={() => setTab("intern")}>Intern</Button>
               <Button size="sm" variant={tab === "poets" ? "default" : "outline"} onClick={() => setTab("poets")}>Poets</Button>
+              <Button size="sm" variant={tab === "credit" ? "destructive" : "outline"} onClick={() => setTab("credit")}>Creditfacturen</Button>
             </div>
           </div>
 
@@ -209,35 +257,62 @@ const WerkplaatsFacturen: React.FC = () => {
             <div className="p-10 text-center text-[13px] text-slate-400">Geen facturen gevonden.</div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {filtered.map((r) => (
-                <div key={r.id} className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-3 px-4 py-3">
+              {filtered.map((r) => {
+                const credit = isCredit(r);
+                const info = credit ? null : infoOf.get(r.id) || EMPTY_INFO;
+                const badge = info ? creditBadge(asOrig(r), info) : null;
+                const betaal = betaalLabel(asOrig(r), info);
+                const orig = credit && r.credit_van_invoice_id ? byId.get(r.credit_van_invoice_id) : null;
+                const definitief = r.status === "verstuurd" || r.status === "definitief";
+                return (
+                <div key={r.id} className={`flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-3 px-4 py-3 ${credit ? "bg-destructive/5" : ""}`}>
                   <div className="flex items-center gap-2 md:contents">
-                    <div className="md:w-[130px] font-mono text-[12.5px] font-semibold text-slate-900">{r.invoice_number || "concept"}</div>
+                    <div className={`md:w-[130px] font-mono text-[12.5px] font-semibold ${credit ? "text-destructive" : "text-slate-900"}`}>{r.invoice_number || "concept"}</div>
                     <div className="md:w-[92px] text-[12px] text-slate-500">{new Date(r.created_at).toLocaleDateString("nl-NL")}</div>
                   </div>
-                  <div className="md:flex-1 md:min-w-[150px] text-[13px] text-slate-800 truncate">{r.customer?.name || "—"}</div>
-                  <div className="flex items-center gap-2 md:contents">
-                    <AsLicensePlate value={r.vehicle?.license_number} size="sm" />
-                    <div className="md:w-[110px] md:text-right text-[13px] font-semibold tabular-nums">{eur(Number(r.total) || 0)}</div>
-                    <AsPill tone={r.status === "verstuurd" ? "green" : "amber"}>{r.status}</AsPill>
-                    {r.invoice_kind === "intern" || r.payment_status === "nvt" ? (
-                      <AsPill tone="slate">betaling n.v.t.</AsPill>
-                    ) : (
-                      <AsPill tone={r.payment_status === "betaald" ? "green" : "red"}>
-                        {r.payment_status === "betaald" ? "betaald" : "open"}
-                      </AsPill>
+                  <div className="md:flex-1 md:min-w-[150px] min-w-0 text-[13px] text-slate-800">
+                    <div className="truncate">{r.customer?.name || "—"}</div>
+                    {credit && (
+                      <div className="text-[11.5px] text-destructive truncate">Creditering van {orig?.invoice_number || "factuur"}{r.credit_reden ? ` · ${r.credit_reden}` : ""}</div>
                     )}
                   </div>
+                  <div className="flex items-center gap-2 md:contents">
+                    <AsLicensePlate value={r.vehicle?.license_number} size="sm" />
+                    <div className={`md:w-[110px] md:text-right text-[13px] font-semibold tabular-nums ${credit ? "text-destructive" : ""}`}>{eur(Number(r.total) || 0)}</div>
+                    {credit && <AsPill tone="red">Credit</AsPill>}
+                    <AsPill tone={definitief ? "green" : "amber"}>{credit && r.status === "concept" ? "wordt verstuurd" : r.status}</AsPill>
+                    {credit ? null : betaal === "n.v.t." ? (
+                      <AsPill tone="slate">betaling n.v.t.</AsPill>
+                    ) : (
+                      <AsPill tone={betaal === "betaald" ? "green" : betaal === "gecrediteerd" ? "slate" : "red"}>
+                        {betaal === "gecrediteerd" ? "Gecrediteerd" : betaal}
+                      </AsPill>
+                    )}
+                    {badge && <AsPill tone={badge.tone}>{badge.label}</AsPill>}
+                  </div>
                   <div className="flex gap-2 [&_button]:min-h-[44px] md:[&_button]:min-h-0">
-                    {r.status === "verstuurd" ? (
+                    {credit ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>
-                        {mayTogglePaid && r.invoice_kind !== "intern" && r.payment_status !== "nvt" && (
+                        {/* externe creditfactuur mailt de eigenaar zelf; intern alleen opnieuw naar de administratie */}
+                        {!readOnly && r.status === "verstuurd" && r.invoice_kind !== "extern" && (
+                          <Button size="sm" variant="ghost" onClick={() => resend(r)}><Send className="h-3.5 w-3.5 mr-1" />Mailen</Button>
+                        )}
+                      </>
+                    ) : definitief ? (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>
+                        {mayTogglePaid && r.invoice_kind !== "intern" && r.payment_status !== "nvt" && betaal !== "gecrediteerd" && (
                           <Button size="sm" variant="ghost" onClick={() => togglePaid(r)}>
                             <Check className="h-3.5 w-3.5 mr-1" />{r.payment_status === "betaald" ? "Op open" : "Betaald"}
                           </Button>
                         )}
                         {!readOnly && <Button size="sm" variant="ghost" onClick={() => resend(r)}><Send className="h-3.5 w-3.5 mr-1" />Mailen</Button>}
+                        {mayCredit && info && crediteerbaar(asOrig(r), info) && (
+                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setCreditFor(r)}>
+                            <Undo2 className="h-3.5 w-3.5 mr-1" />Crediteren
+                          </Button>
+                        )}
                       </>
                     ) : readOnly ? null : (
                       <Button size="sm" variant="outline" onClick={() => setEdit({
@@ -250,12 +325,21 @@ const WerkplaatsFacturen: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </AsCard>
 
         <WorkshopInvoiceDialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} initial={edit} onSaved={load} />
+        <CrediteerFactuurDialog
+          invoice={creditFor}
+          info={creditFor ? infoOf.get(creditFor.id) || EMPTY_INFO : null}
+          mayReinvoice={mayCreateManual}
+          mayDispatch={!readOnly}
+          onOpenChange={(v) => !v && setCreditFor(null)}
+          onDone={load}
+        />
       </AsPage>
     </DashboardLayout>
   );

@@ -5712,7 +5712,12 @@ export type Database = {
           branch: string
           created_at: string
           created_by: string | null
+          credit_reden: string | null
+          credit_van_invoice_id: string | null
           customer: Json
+          document_type: string
+          gecrediteerd_door: string | null
+          gecrediteerd_op: string | null
           id: string
           invoice_kind: string
           invoice_number: string
@@ -5738,7 +5743,12 @@ export type Database = {
           branch?: string
           created_at?: string
           created_by?: string | null
+          credit_reden?: string | null
+          credit_van_invoice_id?: string | null
           customer: Json
+          document_type?: string
+          gecrediteerd_door?: string | null
+          gecrediteerd_op?: string | null
           id?: string
           invoice_kind?: string
           invoice_number: string
@@ -5764,7 +5774,12 @@ export type Database = {
           branch?: string
           created_at?: string
           created_by?: string | null
+          credit_reden?: string | null
+          credit_van_invoice_id?: string | null
           customer?: Json
+          document_type?: string
+          gecrediteerd_door?: string | null
+          gecrediteerd_op?: string | null
           id?: string
           invoice_kind?: string
           invoice_number?: string
@@ -5792,6 +5807,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_invoices_credit_van_invoice_id_fkey"
+            columns: ["credit_van_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_invoices"
             referencedColumns: ["id"]
           },
           {
@@ -5830,6 +5852,7 @@ export type Database = {
     }
     Functions: {
       _discipline_label: { Args: { s: string }; Returns: string }
+      _eur: { Args: { p: number }; Returns: string }
       _import_label: { Args: { s: string }; Returns: string }
       can_assign_tasks: { Args: { user_id: string }; Returns: boolean }
       can_manage_task: {
@@ -5852,6 +5875,33 @@ export type Database = {
         Returns: string
       }
       extern_facturen_open_aantal: { Args: never; Returns: number }
+      factuur_betaalstatus_zetten: {
+        Args: { p_id: string; p_status: string }
+        Returns: undefined
+      }
+      factuur_crediteren: {
+        Args: {
+          p_bedrag_excl?: number
+          p_dry_run?: boolean
+          p_invoice_id: string
+          p_modus: string
+          p_reden?: string
+          p_regels?: Json
+        }
+        Returns: Json
+      }
+      factuur_crediteren_intern: {
+        Args: {
+          p_bedrag_excl: number
+          p_dry_run: boolean
+          p_invoice_id: string
+          p_modus: string
+          p_nummer: string
+          p_reden: string
+          p_regels: Json
+        }
+        Returns: Json
+      }
       garantie_contact_wijzigen: {
         Args: {
           p_claim_id: string

@@ -47,6 +47,7 @@ export interface OrderInvoiceLink {
   status?: string | null;
   work_order_id: string | null;
   source_work_order_ids: unknown;
+  document_type?: string | null;
 }
 
 /** Koppel-fallback: lege source_work_order_ids ([] = kolom-default) → work_order_id. */
@@ -64,7 +65,7 @@ export function pendingInvoiceAmount(order: BillableOrder, invoices: OrderInvoic
 }
 
 export const linkedExternalInvoice = (orderId: string, invoices: OrderInvoiceLink[]) =>
-  invoices.find(invoice => invoice.invoice_kind !== "intern" && linkedIds(invoice).includes(orderId)) || null;
+  invoices.find(invoice => invoice.invoice_kind !== "intern" && invoice.document_type !== "creditfactuur" && linkedIds(invoice).includes(orderId)) || null;
 
 export type Interval = [number, number];
 

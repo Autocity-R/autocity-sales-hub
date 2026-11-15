@@ -268,8 +268,11 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
       try {
         const [t, r, m] = await Promise.all([fetchTarieven(), fetchReparaties(), fetchModellen()]);
         setTarieven(t); setReparaties(r); setModellen(m);
-        setUseKleinMateriaal(t.klein_materiaal_enabled);
-        setUseMilieu(t.milieukosten_enabled);
+        // na "opnieuw factureren" staan toeslagen al als regels van het origineel in de lijst
+        if (!prefillInvoiceDone.current) {
+          setUseKleinMateriaal(t.klein_materiaal_enabled);
+          setUseMilieu(t.milieukosten_enabled);
+        }
       } catch (e: any) {
         toast({ title: "Prijsdatabase laden mislukt", description: e.message, variant: "destructive" });
       }
@@ -294,6 +297,42 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
     }]);
     if (p.merk) setPanelMerk(String(p.merk));
     if (p.model) setPanelModel(String(p.model));
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
+
+  /* prefill na "Crediteren en opnieuw factureren" — klant, auto, regels en werkorder van het origineel */
+  const prefillInvoiceDone = useRef(false);
+  useEffect(() => {
+    if (prefillInvoiceDone.current) return;
+    const p = (location.state as any)?.prefillInvoice;
+    if (!p) return;
+    prefillInvoiceDone.current = true;
+    const str = (v: unknown) => (v == null ? "" : String(v));
+    const c = p.customer || {};
+    const v = p.vehicle || {};
+    setKind(p.kind === "intern" ? "intern" : "extern");
+    setCustomer({
+      name: str(c.name), street: str(c.street), house_number: str(c.house_number), postal_code: str(c.postal_code),
+      city: str(c.city), email: str(c.email), phone: str(c.phone),
+    });
+    setVehicle({
+      brand: str(v.brand), model: str(v.model), license_number: str(v.license_number),
+      mileage: str(v.mileage), year: str(v.year), vin: str(v.vin),
+    });
+    setVehicleId(p.vehicle_id || null);
+    setUseKleinMateriaal(false);
+    setUseMilieu(false);
+    if (p.tak === "werkplaats" || p.tak === "schadeherstel") setTak(p.tak);
+    setLines((Array.isArray(p.lines) ? p.lines : []).map((l: any) => ({
+      id: newId(), kind: "vrij" as const, description: str(l.description), amount: round2(Number(l.amount) || 0),
+    })));
+    if (p.work_order_id) {
+      setLinkOrder({
+        id: p.work_order_id, approved_at: null, discipline: p.tak === "schadeherstel" ? "spuit" : "werkplaats",
+        klant: c.name || null, vehicle_id: p.vehicle_id || null, kenteken: v.license_number || null,
+        branch: p.branch || null, assigned_to: null,
+      });
+    }
     navigate(location.pathname, { replace: true, state: null });
   }, [location.state, location.pathname, navigate]);
 

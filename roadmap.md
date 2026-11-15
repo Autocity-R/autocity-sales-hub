@@ -46,3 +46,7 @@
 - [x] Bouwstap 17B: generiek overnemen (werkorder_overnemen, spuit_overnemen wrapper, knop voor monteurs)
 - [x] Bouwstap 17C: uren per persoon in Performance/KPI/Directie/Mijn prestaties + "samen met", planning "A → B (overgenomen)"
 - [ ] Bouwstap 17 ingelogde schermcontrole (monteur Overnemen in Mijn werk, Performance-detail): externe Supabase biedt geen testsessie
+
+- [x] Bouwstap 18A: creditfacturen in de database (kolommen, RPC factuur_crediteren met dry-run, omzet in creditmaand, guard) (niet publiceren)
+- [x] Bouwstap 18B: Crediteren-knop + dialoog + pdf "CREDITFACTUUR" + lijstbadges/filter in Facturen (niet publiceren)
+- [x] Bouwstap 18C: credits correct in rapportages, cockpit, controle, klanten, historie per auto (niet publiceren)

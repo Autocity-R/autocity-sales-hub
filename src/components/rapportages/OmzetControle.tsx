@@ -59,6 +59,18 @@ export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string
         <List title="Facturen die niet meetellen" empty="Geen." n={c.nietMee.length}>
           {c.nietMee.map(i => <Row key={i.id}><b className="font-mono">{i.invoice_number}</b><span>{eur2(Number(i.subtotal) || 0)}</span><span>{i.telt_niet_mee_reden || "—"}</span></Row>)}
         </List>
+        <List title={`Creditfacturen ${label}`} empty="Geen creditfacturen in deze periode." n={c.creditfacturen.length}>
+          {c.creditfacturen.map(i => (
+            <Row key={i.id}>
+              <b className="font-mono text-destructive">{i.invoice_number}</b>
+              <span>van {i.origineel || "—"}</span>
+              <span>{i.credit_reden || "—"}</span>
+              <span>door {i.door || "—"}</span>
+              <span className="font-semibold text-destructive">{eur2(Number(i.subtotal) || 0)}</span>
+              {i.telt_niet_mee && <AsPill tone="slate">telt niet mee</AsPill>}
+            </Row>
+          ))}
+        </List>
         {c.poetsZonderUitvoerder.length > 0 && (
           <List title="Afgeronde poetsbeurten zonder uitvoerder (nergens gefactureerd)" empty="Geen." n={c.poetsZonderUitvoerder.length}>
             {c.poetsZonderUitvoerder.map(b => <Row key={b.id}><span>{dmy(b.day)}</span><span className="font-mono text-[10.5px]">{b.id.slice(0, 8)}</span></Row>)}

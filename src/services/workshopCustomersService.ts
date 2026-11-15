@@ -48,7 +48,7 @@ export const getWorkshopCustomers = async (): Promise<WorkshopCustomerRow[]> => 
       .range(a, b)),
     fetchAllPages<any>((a, b) => (supabase as any)
       .from("workshop_invoices")
-      .select("id, created_at, total, subtotal, status, invoice_kind, telt_niet_mee, customer, vehicle, vehicle_id, work_order_id")
+      .select("id, created_at, total, subtotal, status, invoice_kind, telt_niet_mee, customer, vehicle, vehicle_id, work_order_id, document_type")
       .eq("invoice_kind", "extern")
       .order("created_at", { ascending: false })
       .range(a, b)),
@@ -172,10 +172,12 @@ export const getWorkshopCustomers = async (): Promise<WorkshopCustomerRow[]> => 
       city: c.city,
     });
     if (!row) continue;
+    // creditfacturen verlagen het bedrag, maar tellen niet als extra factuur of bezoek
+    const credit = inv.document_type === "creditfactuur";
     row.totalSpent += Number(inv.subtotal) || 0;
     row.totalSpentIncl += Number(inv.total) || 0;
-    row.invoiceCount += 1;
-    if (inv.created_at && (!row.lastVisit || new Date(inv.created_at) > new Date(row.lastVisit))) {
+    if (!credit) row.invoiceCount += 1;
+    if (!credit && inv.created_at && (!row.lastVisit || new Date(inv.created_at) > new Date(row.lastVisit))) {
       row.lastVisit = inv.created_at;
     }
     const iv = inv.vehicle || {};

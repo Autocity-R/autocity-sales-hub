@@ -575,6 +575,9 @@ const poetsRevenue = (raw: RapRaw, a: Date, b: Date) => {
   return { invoiced: inv, open: open.bedrag, openCount: open.count, total: Math.round((inv + open.bedrag) * 100) / 100 };
 };
 
+/** Excl. → incl. volgens de poetsprijs (€ 100 incl. = € 82,64 excl.); ook correct na een (deel)creditfactuur. */
+const poetsIncl = (excl: number) => Math.round(excl * POETS_PRICE_INCL / POETS_PRICE_EXCL * 100) / 100;
+
 export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStats {
   const profileOf = (id?: string | null) => raw.profiles.find(p => p.id === id);
   const typeOf = (id?: string | null): "intern" | "extern" | "onbekend" => {
@@ -641,7 +644,7 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
     const pr = poetsRevenue(raw, b.from, b.to);
     months.push({
       month: b.label, monthKey: b.key, intern, extern,
-      revenueIncl: Math.round(pr.total / POETS_PRICE_EXCL) * POETS_PRICE_INCL,
+      revenueIncl: poetsIncl(pr.total),
       revenueExcl: pr.total, invoicedExcl: pr.invoiced, openExcl: pr.open,
       selected: +b.to > +from && +b.from < +to,
     });
@@ -650,7 +653,7 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   const pr = poetsRevenue(raw, from, to);
   return {
     internCars, externCars, unknownCars,
-    revenueIncl: Math.round(pr.total / POETS_PRICE_EXCL) * POETS_PRICE_INCL,
+    revenueIncl: poetsIncl(pr.total),
     revenueExcl: pr.total, invoicedExcl: pr.invoiced, openExcl: pr.open, openCount: pr.openCount,
     persons, months, rows,
   };

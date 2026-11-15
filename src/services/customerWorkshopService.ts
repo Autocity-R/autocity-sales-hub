@@ -25,6 +25,7 @@ export interface WorkshopHistoryInvoice {
   status: string | null;
   created_at: string;
   pdf_path: string | null;
+  document_type?: string | null;
 }
 
 export interface CustomerWorkshopHistory {
@@ -88,7 +89,7 @@ export const getCustomerWorkshopHistory = async (
     if (allVehicleIds.length) invFilters.push(`vehicle_id.in.(${allVehicleIds.join(",")})`);
     const { data: invRows } = await supabase
       .from("workshop_invoices")
-      .select("id, invoice_number, total, status, created_at, pdf_path, work_order_id, vehicle_id, source_work_order_ids")
+      .select("id, invoice_number, total, status, created_at, pdf_path, work_order_id, vehicle_id, source_work_order_ids, document_type")
       .eq("invoice_kind", "extern")
       .or(invFilters.join(","))
       .order("created_at", { ascending: false })
