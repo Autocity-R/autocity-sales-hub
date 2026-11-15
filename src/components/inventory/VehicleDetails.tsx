@@ -1,3 +1,4 @@
+import { SleutelsLaadkabels } from "@/components/inventory/SleutelsLaadkabels";
 import { TijdelijkLeenautoBadge } from "@/components/leenauto/TijdelijkLeenautoBadge";
 import React, { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
@@ -210,6 +211,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           <DialogHeader className="sticky top-0 z-10 bg-background p-6 pb-2 border-b">
             <DialogTitle className="flex flex-wrap items-center gap-2">
               {vehicle.brand} {vehicle.model}
+              <SleutelsLaadkabels className="text-sm" sleutels={editedVehicle.aantalSleutels} laadkabels={editedVehicle.aantalLaadkabels} />
               <TijdelijkLeenautoBadge vehicleId={vehicle.id} showDetail />
             </DialogTitle>
             <DialogDescription>

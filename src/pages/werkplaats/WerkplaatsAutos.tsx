@@ -34,7 +34,9 @@ interface Row {
 }
 
 const WerkplaatsAutos: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  // "Taak toewijzen": ook de operationeel directeur (alleen werkplaats + schadeherstel)
+  const { canCreateWorkOrders, workOrderCreateDisciplines } = useRoleAccess();
+  const canCreate = canCreateWorkOrders();
   const [params, setParams] = useSearchParams();
   const initial = (params.get("tab") as TabKey) || "voorraad";
   const [tab, setTab] = useState<TabKey>(initial);
@@ -148,7 +150,7 @@ const WerkplaatsAutos: React.FC = () => {
                     </Badge>
                   ))}
                 </div>
-                {!readOnly && (
+                {canCreate && (
                   <Button size="sm" onClick={(e) => { e.stopPropagation(); setAddFor(v); }}>
                     <Plus className="h-4 w-4 mr-1" /> Taak toewijzen
                   </Button>
@@ -166,6 +168,7 @@ const WerkplaatsAutos: React.FC = () => {
           vehicleId={addFor.id}
           vehicleLabel={`${addFor.brand} ${addFor.model} · ${addFor.license_number || ""}`}
           branch={addFor.branch}
+          disciplines={workOrderCreateDisciplines()}
           onCreated={load}
         />
       )}

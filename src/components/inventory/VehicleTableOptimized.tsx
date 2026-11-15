@@ -1,3 +1,4 @@
+import { SleutelsLaadkabels } from "@/components/inventory/SleutelsLaadkabels";
 import React, { useState, memo, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -159,6 +160,7 @@ const VehicleRow = memo<{
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.licenseNumber}
+        <div><SleutelsLaadkabels sleutels={vehicle.aantalSleutels} laadkabels={vehicle.aantalLaadkabels} /></div>
         <div><TijdelijkLeenautoBadge vehicleId={vehicle.id} /></div>
       </TableCell>
       <TableCell className="align-middle truncate max-w-32">
@@ -411,6 +413,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 {renderImportStatusBadge(vehicle.importStatus)}
                 <OnlineStatusBadge isOnline={vehicle.showroomOnline} salesStatus={vehicle.salesStatus} />
                 <TijdelijkLeenautoBadge vehicleId={vehicle.id} />
+                <SleutelsLaadkabels sleutels={vehicle.aantalSleutels} laadkabels={vehicle.aantalLaadkabels} />
                 <Badge variant="secondary">{days(vehicle.createdAt)} dagen</Badge>
               </>
             }

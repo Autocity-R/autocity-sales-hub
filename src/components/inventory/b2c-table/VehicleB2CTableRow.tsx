@@ -1,3 +1,4 @@
+import { SleutelsLaadkabels } from "@/components/inventory/SleutelsLaadkabels";
 
 import React, { memo } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -152,6 +153,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.licenseNumber || '-'}
+        <div><SleutelsLaadkabels sleutels={vehicle.aantalSleutels} laadkabels={vehicle.aantalLaadkabels} /></div>
       </TableCell>
       <TableCell className="align-middle text-muted-foreground">
         {vehicle.year || '-'}

@@ -4499,6 +4499,47 @@ export type Database = {
           },
         ]
       }
+      vehicle_inname_wijzigingen: {
+        Row: {
+          created_at: string
+          gewijzigd_door: string | null
+          gewijzigd_op: string
+          id: string
+          nieuw: number | null
+          oud: number | null
+          vehicle_id: string
+          veld: string
+        }
+        Insert: {
+          created_at?: string
+          gewijzigd_door?: string | null
+          gewijzigd_op?: string
+          id?: string
+          nieuw?: number | null
+          oud?: number | null
+          vehicle_id: string
+          veld: string
+        }
+        Update: {
+          created_at?: string
+          gewijzigd_door?: string | null
+          gewijzigd_op?: string
+          id?: string
+          nieuw?: number | null
+          oud?: number | null
+          vehicle_id?: string
+          veld?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_inname_wijzigingen_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_intakes: {
         Row: {
           approved_at: string | null
@@ -4740,6 +4781,7 @@ export type Database = {
       vehicles: {
         Row: {
           aangekomen_at: string | null
+          aantal_laadkabels: number | null
           aantal_sleutels: number | null
           aanvraag_ontvangen_at: string | null
           b2b_delivered: boolean
@@ -4762,6 +4804,8 @@ export type Database = {
           import_status_locked_at: string | null
           import_updated_at: string | null
           ingeschreven_at: string | null
+          laadkabels_geregistreerd_door: string | null
+          laadkabels_geregistreerd_op: string | null
           license_number: string | null
           location: string | null
           mileage: number | null
@@ -4789,6 +4833,7 @@ export type Database = {
         }
         Insert: {
           aangekomen_at?: string | null
+          aantal_laadkabels?: number | null
           aantal_sleutels?: number | null
           aanvraag_ontvangen_at?: string | null
           b2b_delivered?: boolean
@@ -4811,6 +4856,8 @@ export type Database = {
           import_status_locked_at?: string | null
           import_updated_at?: string | null
           ingeschreven_at?: string | null
+          laadkabels_geregistreerd_door?: string | null
+          laadkabels_geregistreerd_op?: string | null
           license_number?: string | null
           location?: string | null
           mileage?: number | null
@@ -4838,6 +4885,7 @@ export type Database = {
         }
         Update: {
           aangekomen_at?: string | null
+          aantal_laadkabels?: number | null
           aantal_sleutels?: number | null
           aanvraag_ontvangen_at?: string | null
           b2b_delivered?: boolean
@@ -4860,6 +4908,8 @@ export type Database = {
           import_status_locked_at?: string | null
           import_updated_at?: string | null
           ingeschreven_at?: string | null
+          laadkabels_geregistreerd_door?: string | null
+          laadkabels_geregistreerd_op?: string | null
           license_number?: string | null
           location?: string | null
           mileage?: number | null

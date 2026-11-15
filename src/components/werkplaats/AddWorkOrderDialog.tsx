@@ -22,25 +22,34 @@ interface Props {
   source?: string;
   warrantyClaimId?: string | null;
   intakePointRef?: { intakeId: string; pointIndex: number } | null;
+  /** Toegestane disciplines (standaard alle vier). */
+  disciplines?: WorkOrderDiscipline[];
 }
+
+const ALL_DISCIPLINES: WorkOrderDiscipline[] = ["spuit", "werkplaats", "uitdeuk", "poets"];
 
 export const AddWorkOrderDialog: React.FC<Props> = ({
   open, onOpenChange, vehicleId, vehicleLabel, branch,
   onCreated, defaultDiscipline = "werkplaats", source = "aftersales",
-  warrantyClaimId = null, intakePointRef = null,
+  warrantyClaimId = null, intakePointRef = null, disciplines = ALL_DISCIPLINES,
 }) => {
-  const [discipline, setDiscipline] = useState<WorkOrderDiscipline>(defaultDiscipline);
+  const startDiscipline = disciplines.includes(defaultDiscipline) ? defaultDiscipline : disciplines[0];
+  const [discipline, setDiscipline] = useState<WorkOrderDiscipline>(startDiscipline);
   const [description, setDescription] = useState("");
   const [isRush, setIsRush] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
-    setDiscipline(defaultDiscipline);
+    setDiscipline(startDiscipline);
     setDescription(""); setIsRush(false); setFiles([]);
   };
 
   const handleSubmit = async () => {
+    if (!disciplines.includes(discipline)) {
+      toast({ title: "Deze discipline mag je niet aanmaken", variant: "destructive" });
+      return;
+    }
     if (!description.trim()) {
       toast({ title: "Omschrijving verplicht", variant: "destructive" });
       return;
@@ -135,7 +144,7 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
             <Select value={discipline} onValueChange={(v) => setDiscipline(v as WorkOrderDiscipline)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(["spuit", "werkplaats", "uitdeuk", "poets"] as WorkOrderDiscipline[]).map(d => (
+                {disciplines.map(d => (
                   <SelectItem key={d} value={d}>{DISCIPLINE_LABELS[d]}</SelectItem>
                 ))}
               </SelectContent>

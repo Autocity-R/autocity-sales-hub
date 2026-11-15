@@ -43,6 +43,14 @@ export interface LinkedWorkOrder {
   branch: string | null;
 }
 
+/** Batch-rij (useClaimWerkorders) → vorm die de inplan-knop/-dialoog verwacht. */
+export const toLinkedWorkOrder = (o: {
+  id: string; planned_at: string | null; status: string; description?: string | null;
+  assigned_to: string | null; is_rush?: boolean | null; branch?: string | null;
+} | null | undefined): LinkedWorkOrder | null =>
+  o ? { id: o.id, planned_at: o.planned_at, status: o.status, description: o.description ?? null,
+        assigned_to: o.assigned_to, is_rush: !!o.is_rush, branch: o.branch ?? null } : null;
+
 /** Haal de gekoppelde (niet-geannuleerde) werkplaats-order van een claim op. */
 export async function fetchLinkedWorkOrder(claimId: string): Promise<LinkedWorkOrder | null> {
   const { data } = await supabase
@@ -274,21 +282,33 @@ export const WarrantyScheduleAction: React.FC<{
   claimId: string;
   className?: string;
   size?: "sm" | "default";
-}> = ({ claimId, className, size = "sm" }) => {
+  /** Vooraf opgehaalde order (batch, geen query per claim). undefined = zelf ophalen. */
+  workOrder?: LinkedWorkOrder | null;
+  onChanged?: () => void;
+}> = ({ claimId, className, size = "sm", workOrder, onChanged }) => {
   const navigate = useNavigate();
-  const { hasWerkplaatsAccess } = useRoleAccess();
-  const [wo, setWo] = useState<LinkedWorkOrder | null>(null);
+  const { hasWerkplaatsAccess, isOperationeelDirecteur } = useRoleAccess();
+  const controlled = workOrder !== undefined;
+  const [ownWo, setOwnWo] = useState<LinkedWorkOrder | null>(null);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Inplannen: aftersales/chef én de operationeel directeur (garantie_werkorder_inplannen staat OD toe)
+  const mayPlan = hasWerkplaatsAccess() || isOperationeelDirecteur();
 
   const refresh = async () => {
-    setWo(await fetchLinkedWorkOrder(claimId));
+    if (controlled) { onChanged?.(); return; }
+    setOwnWo(await fetchLinkedWorkOrder(claimId));
     setLoaded(true);
   };
-  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [claimId]);
+  useEffect(() => {
+    if (controlled || !mayPlan) return;
+    refresh();
+    /* eslint-disable-next-line */
+  }, [claimId, controlled, mayPlan]);
 
-  if (!hasWerkplaatsAccess()) return null;
-  if (!loaded) return null;
+  const wo = controlled ? (workOrder ?? null) : ownWo;
+  if (!mayPlan) return null;
+  if (!controlled && !loaded) return null;
 
   return (
     <>

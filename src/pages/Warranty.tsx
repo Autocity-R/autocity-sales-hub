@@ -26,6 +26,9 @@ import { WarrantyClaimsTable } from "@/components/warranty/WarrantyClaimsTable";
 import { WarrantyForm } from "@/components/warranty/WarrantyForm";
 import { WarrantyStatsCards } from "@/components/warranty/WarrantyStatsCards";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useClaimWerkorders } from "@/hooks/useClaimWerkorders";
+import { matchWerkplaatsFilter, werkplaatsStatus, WERKPLAATS_FILTER_LABELS, type WerkplaatsFilter } from "@/lib/claimWerkplaatsStatus";
+import { isClaimOpen } from "@/components/warranty/ClaimWerkplaatsBadge";
 import {
   Select,
   SelectContent,
@@ -46,6 +49,9 @@ const Warranty = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [werkplaatsFilter, setWerkplaatsFilter] = useState<WerkplaatsFilter>("alle");
+  // Live werkplaatsstatus: alleen op deze pagina elke 60 s (en bij terugkeren naar het tabblad); geen realtime.
+  const { perClaim } = useClaimWerkorders({ live: true });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { canManageWarrantyClaims } = useRoleAccess();
   const [activeTab, setActiveTab] = useState("active");
@@ -95,6 +101,12 @@ const Warranty = () => {
       return false;
     }
 
+    // Werkplaatsstatus
+    if (werkplaatsFilter !== "alle") {
+      const soort = werkplaatsStatus(perClaim.get(claim.id) ?? null, isClaimOpen(claim)).soort;
+      if (!matchWerkplaatsFilter(soort, werkplaatsFilter)) return false;
+    }
+
     // Tab filtering
     if (activeTab === "active" && claim.status === "opgelost") {
       return false;
@@ -110,6 +122,7 @@ const Warranty = () => {
     setSearchQuery("");
     setStatusFilter("all");
     setPriorityFilter("all");
+    setWerkplaatsFilter("alle");
   };
 
   // Show active filters count
@@ -117,6 +130,7 @@ const Warranty = () => {
     searchQuery !== "",
     statusFilter !== "all",
     priorityFilter !== "all",
+    werkplaatsFilter !== "alle",
   ].filter(Boolean).length;
 
   return (
@@ -188,6 +202,20 @@ const Warranty = () => {
               <SelectItem value="hoog">Hoog</SelectItem>
               <SelectItem value="normaal">Normaal</SelectItem>
               <SelectItem value="laag">Laag</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Werkplaatsstatus Filter */}
+          <Select value={werkplaatsFilter} onValueChange={(v) => setWerkplaatsFilter(v as WerkplaatsFilter)}>
+            <SelectTrigger className="w-52" aria-label="Werkplaatsstatus">
+              <SelectValue placeholder="Werkplaats" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(WERKPLAATS_FILTER_LABELS) as WerkplaatsFilter[]).map((k) => (
+                <SelectItem key={k} value={k}>
+                  {k === "alle" ? "Werkplaats: alle" : WERKPLAATS_FILTER_LABELS[k]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 

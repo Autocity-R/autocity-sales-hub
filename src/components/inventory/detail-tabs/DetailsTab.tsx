@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSalespeople } from "@/hooks/useSalespeople";
+import { useProfileName } from "@/hooks/useProfileName";
+import { formatRegistratie, laadkabelLabel, toAantal, toggleAantal } from "@/lib/innameRegistratie";
 import { normalizeLicensePlate } from "@/lib/licensePlate";
 
 interface DetailsTabProps {
@@ -56,6 +58,15 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
 
   // Inname-velden (SOH + sleutels): zelfde rechten als de BPM-vinkjes (óók aftersales)
   const canEditVehicleIntake = !readOnly || canEditBpm;
+
+  // Laadkabels: wie/wanneer komt uit de database (trigger). Gewijzigd in dit scherm = nog niet opgeslagen.
+  const laadkabelsBeginRef = React.useRef<{ id: string; waarde: number | null }>({ id: editedVehicle.id, waarde: editedVehicle.aantalLaadkabels ?? null });
+  if (laadkabelsBeginRef.current.id !== editedVehicle.id) {
+    laadkabelsBeginRef.current = { id: editedVehicle.id, waarde: editedVehicle.aantalLaadkabels ?? null };
+  }
+  const laadkabelsGewijzigd = (editedVehicle.aantalLaadkabels ?? null) !== laadkabelsBeginRef.current.waarde;
+  const laadkabelsDoorNaam = useProfileName(editedVehicle.laadkabelsGeregistreerdDoor);
+  const registratieTekst = formatRegistratie(laadkabelsDoorNaam, editedVehicle.laadkabelsGeregistreerdOp);
 
   const formatSoh = (v: number | null | undefined) =>
     v === null || v === undefined ? '' : String(v).replace('.', ',');
@@ -1065,6 +1076,38 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                 : 'Onbekend'}
             </p>
           )}
+        </div>
+
+        {/* Aantal laadkabels — direct onder sleutels, optioneel (bouwstap 16A) */}
+        <div className="space-y-2">
+          <Label>Aantal laadkabels <span className="text-muted-foreground font-normal">(optioneel)</span></Label>
+          {canEditVehicleIntake ? (
+            <div className="grid grid-cols-2 gap-2 max-w-xs">
+              {[1, 2].map((n) => {
+                const active = editedVehicle.aantalLaadkabels === n;
+                return (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant={active ? 'default' : 'outline'}
+                    className="h-12 text-sm"
+                    onClick={() => handleChange('aantalLaadkabels' as any, toggleAantal(toAantal(editedVehicle.aantalLaadkabels), n as 1 | 2))}
+                  >
+                    🔌 {laadkabelLabel(n as 1 | 2)}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm">
+              {editedVehicle.aantalLaadkabels ? `🔌 ${laadkabelLabel(editedVehicle.aantalLaadkabels)}` : 'Niet geregistreerd'}
+            </p>
+          )}
+          {laadkabelsGewijzigd ? (
+            <p className="text-xs text-muted-foreground">Wordt bij opslaan op jouw naam vastgelegd</p>
+          ) : registratieTekst ? (
+            <p className="text-xs text-muted-foreground">{registratieTekst}</p>
+          ) : null}
         </div>
 
         {/* Notes */}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { canAccessRoute, featureAccess } from "./routeAccess";
+import { canAccessRoute, featureAccess, workOrderCreateDisciplinesRole, canCreateExternWorkOrderRole } from "./routeAccess";
 
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
@@ -320,5 +320,21 @@ describe("kenteken bewerken", () => {
     for (const r of ["monteur", "poetser", "schadeherstel", "uitdeuker_extern", "werkplaats_chef", "administratie", "operationeel_directeur", null]) {
       expect(featureAccess.kenteken(r)).toBe(false);
     }
+  });
+});
+
+describe("opdrachten aanmaken (bouwstap 16C)", () => {
+  it("operationeel directeur maakt werkplaats- en schadeherstelopdrachten aan, geen poets/uitdeuk", () => {
+    expect(workOrderCreateDisciplinesRole("operationeel_directeur")).toEqual(["spuit", "werkplaats"]);
+  });
+  it("operationeel directeur maakt geen externe klant/voertuig aan", () => {
+    expect(canCreateExternWorkOrderRole("operationeel_directeur")).toBe(false);
+  });
+  it("aftersales houdt alle vier disciplines en extern", () => {
+    expect(workOrderCreateDisciplinesRole("aftersales_manager")).toEqual(["spuit", "werkplaats", "uitdeuk", "poets"]);
+    expect(canCreateExternWorkOrderRole("aftersales_manager")).toBe(true);
+  });
+  it("administratie blijft alleen inzien", () => {
+    expect(workOrderCreateDisciplinesRole("administratie")).toEqual([]);
   });
 });

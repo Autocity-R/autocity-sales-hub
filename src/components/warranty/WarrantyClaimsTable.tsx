@@ -18,13 +18,15 @@ import {
 import { WarrantyClaim } from "@/types/warranty";
 import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
 import { ClaimNumber } from './ClaimNumber';
-import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
+import { WarrantyScheduleAction, toLinkedWorkOrder } from "./ScheduleWarrantyWorkOrder";
 import { updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from "@/services/warrantyService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchUitleningenVoorClaims } from "@/services/leenautoService";
 import { mapClaimUitleningen } from "@/lib/claimLeenauto";
 import { useToast } from "@/hooks/use-toast";
 import { useIsCompact } from "@/hooks/use-mobile";
+import { useClaimWerkorders, CLAIM_WERKORDERS_KEY } from "@/hooks/useClaimWerkorders";
+import { ClaimWerkplaatsBadge, isClaimOpen } from "./ClaimWerkplaatsBadge";
 import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
 
 interface WarrantyClaimsTableProps {
@@ -64,6 +66,10 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
       loanCarId: claim.loanCarId, loanCarAssigned: claim.loanCarAssigned, kenteken: claim.loanCarDetails?.licenseNumber,
     });
   const isCompact = useIsCompact();
+  // Live werkplaatsstatus: één gedeelde query voor alle claims (verversen regelt het garantiemenu zelf).
+  const { perClaim } = useClaimWerkorders();
+  const orderVoor = (claim: WarrantyClaim) => perClaim.get(claim.id) ?? null;
+  const refreshWerkorders = () => queryClient.invalidateQueries({ queryKey: CLAIM_WERKORDERS_KEY });
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -219,6 +225,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                 <>
                   {getStatusBadge(claim.status)}
                   {getPriorityBadge(claim.priority)}
+                  <ClaimWerkplaatsBadge order={orderVoor(claim)} claimOpen={isClaimOpen(claim)} />
                   {(() => {
                     const s = leenLabel(claim);
                     return s.soort === "geen" ? null : (
@@ -249,7 +256,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                     <Eye className="h-4 w-4 mr-1" />
                     Details
                   </Button>
-                  <WarrantyScheduleAction claimId={claim.id} />
+                  <WarrantyScheduleAction claimId={claim.id} workOrder={toLinkedWorkOrder(orderVoor(claim))} onChanged={refreshWerkorders} />
                 </>
               }
             />
@@ -265,6 +272,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
             <TableHead>Probleem</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Prioriteit</TableHead>
+            <TableHead>Werkplaats</TableHead>
             <TableHead>Leen Auto</TableHead>
             <TableHead>Afspraak</TableHead>
             <TableHead>Datum Gemeld</TableHead>
@@ -287,7 +295,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
         <TableBody>
           {claims.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showResolved ? 14 : 12} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={showResolved ? 15 : 13} className="text-center py-8 text-muted-foreground">
                 Geen garantieclaims gevonden
               </TableCell>
             </TableRow>
@@ -321,6 +329,9 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                 </TableCell>
                 <TableCell>
                   {getPriorityBadge(claim.priority)}
+                </TableCell>
+                <TableCell>
+                  <ClaimWerkplaatsBadge order={orderVoor(claim)} claimOpen={isClaimOpen(claim)} />
                 </TableCell>
                 <TableCell>
                   {(() => {
@@ -414,7 +425,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                       <Eye className="h-4 w-4 mr-1" />
                       Details
                     </Button>
-                    <WarrantyScheduleAction claimId={claim.id} />
+                    <WarrantyScheduleAction claimId={claim.id} workOrder={toLinkedWorkOrder(orderVoor(claim))} onChanged={refreshWerkorders} />
                   </div>
                 </TableCell>
               </TableRow>

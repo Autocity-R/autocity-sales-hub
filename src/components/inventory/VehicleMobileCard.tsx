@@ -1,3 +1,4 @@
+import { SleutelsLaadkabels } from "@/components/inventory/SleutelsLaadkabels";
 import React from "react";
 import { Link } from "react-router-dom";
 import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
@@ -79,7 +80,10 @@ export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
             <h3 className="font-semibold text-base leading-tight">
               {vehicle.brand} {vehicle.model}
             </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">{vehicle.licenseNumber}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {vehicle.licenseNumber}
+              <SleutelsLaadkabels className="ml-2" sleutels={vehicle.aantalSleutels} laadkabels={vehicle.aantalLaadkabels} />
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

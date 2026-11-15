@@ -220,6 +220,9 @@ export interface Vehicle {
   // Inname-registratie
   sohPct?: number | null;        // Accu-gezondheid (State of Health) in %, null/undefined = niet gemeten
   aantalSleutels?: 1 | 2 | null; // Aantal sleutels, null/undefined = onbekend
+  aantalLaadkabels?: 1 | 2 | null; // Aantal laadkabels, null/undefined = niet geregistreerd (optioneel)
+  laadkabelsGeregistreerdDoor?: string | null; // alleen-lezen, gezet door DB-trigger
+  laadkabelsGeregistreerdOp?: string | null;   // alleen-lezen, gezet door DB-trigger
   
   // Email reminder settings
   emailReminderSettings?: {

@@ -331,8 +331,10 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { canCancelWorkOrders, canPlanWorkOrders, isDirectieReadOnly } = useRoleAccess();
+  const { canCancelWorkOrders, canPlanWorkOrders, isDirectieReadOnly, canCreateWorkOrders, workOrderCreateDisciplines, canCreateExternWorkOrders } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
+  // Aanmaken: ook de operationeel directeur (alleen werkplaats + schadeherstel, intern)
+  const canCreate = canCreateWorkOrders();
   // "Verwijderen" in de planning = annuleren (status geannuleerd); ook de operationeel directeur.
   const canDelete = canCancelWorkOrders();
   const canPlan = canPlanWorkOrders();
@@ -615,7 +617,7 @@ const WerkplaatsPlanning: React.FC = () => {
         </div>
 
         {/* Taak toevoegen-balk */}
-        {!readOnly && <AddTaskBar onCreated={load} />}
+        {canCreate && <AddTaskBar onCreated={load} disciplines={workOrderCreateDisciplines()} allowExtern={canCreateExternWorkOrders()} />}
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">

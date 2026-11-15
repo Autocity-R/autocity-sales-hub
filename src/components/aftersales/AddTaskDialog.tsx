@@ -34,6 +34,8 @@ interface Props {
   discipline: WorkOrderDiscipline;
   presetVehicle?: AddTaskVehicle | null;
   onCreated?: () => void;
+  /** false = alleen interne opdracht (bv. operationeel directeur: geen klant/voertuig aanmaken). */
+  allowExtern?: boolean;
 }
 
 const DISCIPLINE_META: Record<WorkOrderDiscipline, {
@@ -87,7 +89,7 @@ const DISCIPLINE_META: Record<WorkOrderDiscipline, {
   },
 };
 
-export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline, presetVehicle, onCreated }) => {
+export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline, presetVehicle, onCreated, allowExtern = true }) => {
   const meta = DISCIPLINE_META[discipline];
   const [vehicle, setVehicle] = useState<AddTaskVehicle | null>(presetVehicle ?? null);
   const [query, setQuery] = useState("");
@@ -108,7 +110,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
   const searchTimer = useRef<number | null>(null);
 
   // Extern (werkplaats + schadeherstel)
-  const externAllowed = discipline === "werkplaats" || discipline === "spuit";
+  const externAllowed = allowExtern && (discipline === "werkplaats" || discipline === "spuit");
   const [mode, setMode] = useState<"intern" | "extern">("intern");
   const [custMode, setCustMode] = useState<"bestaand" | "nieuw">("nieuw");
   const [custQuery, setCustQuery] = useState("");
@@ -874,8 +876,14 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
 
 /* ============= Balk met vier knoppen ============= */
 
-export const AddTaskBar: React.FC<{ onCreated?: () => void; presetVehicle?: AddTaskVehicle | null }> = ({
-  onCreated, presetVehicle,
+export const AddTaskBar: React.FC<{
+  onCreated?: () => void;
+  presetVehicle?: AddTaskVehicle | null;
+  /** Toegestane disciplines (standaard alle vier). */
+  disciplines?: WorkOrderDiscipline[];
+  allowExtern?: boolean;
+}> = ({
+  onCreated, presetVehicle, disciplines, allowExtern = true,
 }) => {
   const [open, setOpen] = useState<WorkOrderDiscipline | null>(null);
   const buttons: Array<{ d: WorkOrderDiscipline; label: string; icon: React.ReactNode; className: string }> = [
@@ -888,6 +896,7 @@ export const AddTaskBar: React.FC<{ onCreated?: () => void; presetVehicle?: AddT
     { d: "poets", label: "Poetsen", icon: <Sparkles className="h-5 w-5" />,
       className: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700" },
   ];
+  const shown = disciplines ? buttons.filter(b => disciplines.includes(b.d)) : buttons;
 
   return (
     <>
@@ -901,8 +910,8 @@ export const AddTaskBar: React.FC<{ onCreated?: () => void; presetVehicle?: AddT
             <div className="text-[11.5px] text-slate-500">Kies de discipline — zoek de auto, vul in, klaar.</div>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
-          {buttons.map(b => (
+        <div className={cn("grid grid-cols-2 gap-3 p-4", shown.length >= 4 && "md:grid-cols-4")}>
+          {shown.map(b => (
             <button key={b.d} onClick={() => setOpen(b.d)}
               className={cn("flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors font-semibold text-[13.5px]", b.className)}>
               <div className="h-9 w-9 rounded-lg bg-white/70 flex items-center justify-center">{b.icon}</div>
@@ -919,6 +928,7 @@ export const AddTaskBar: React.FC<{ onCreated?: () => void; presetVehicle?: AddT
           discipline={open}
           presetVehicle={presetVehicle}
           onCreated={onCreated}
+          allowExtern={allowExtern}
         />
       )}
     </>

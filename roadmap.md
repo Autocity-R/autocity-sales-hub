@@ -36,3 +36,8 @@
 - [ ] Website-reservering edge function — plan klaar, wacht op akkoord eigenaar
 - [x] Bouwstap 13A: Historie-tijdlijn per auto (RPC voertuig_tijdlijn + tabblad in detail, werkplaats-sheet, afgeleverd-link) (niet gepubliceerd)
 - [x] Bouwstap 13B: Nog te factureren (extern) blok + factuur_niet_nodig RPC + badge (niet gepubliceerd)
+
+- [x] Bouwstap 16A: laadkabels (1/2, optioneel) bij inname + voertuigdetail, wie/wanneer, log + historie, 🔑/🔌 op kaarten (niet publiceren)
+- [x] Bouwstap 16B: live werkplaatsstatus bij garantieclaims (badge, filter, 60 s alleen op garantiemenu, "afronden?"-signaal) (niet publiceren)
+- [x] Bouwstap 16C: operationeel directeur maakt werkplaats- en schadeherstelopdrachten aan + garantie inplannen (niet publiceren)
+- [ ] Bouwstap 16 ingelogde schermcontrole (OD/aftersales/garantiemenu): externe Supabase biedt geen testsessie

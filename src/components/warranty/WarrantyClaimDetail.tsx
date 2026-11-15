@@ -55,7 +55,11 @@ import {
 import { WarrantyClaim, LoanCar } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
 import { fetchLoanCars } from "@/services/warrantyService";
-import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
+import { WarrantyScheduleAction, toLinkedWorkOrder } from "./ScheduleWarrantyWorkOrder";
+import { useClaimWerkorders, CLAIM_WERKORDERS_KEY } from "@/hooks/useClaimWerkorders";
+import { ClaimWerkplaatsBadge, isClaimOpen } from "./ClaimWerkplaatsBadge";
+import { canAccessRoute } from "@/lib/routeAccess";
+import { useNavigate } from "react-router-dom";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { canWriteLeenautoRole } from "@/lib/routeAccess";
 import { useQueryClient } from "@tanstack/react-query";
@@ -88,6 +92,11 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   const claim = { ...originalClaim, ...contactUpdates };
   const { canManageWarrantyClaims, canDeleteWarrantyClaims, userRole, isAdmin } = useRoleAccess();
   const canLendLoanCar = isAdmin || canWriteLeenautoRole(userRole);
+  // Live werkplaatsstatus (gedeelde cache met de claimlijst; geen eigen interval)
+  const navigate = useNavigate();
+  const { perClaim } = useClaimWerkorders();
+  const werkorder = perClaim.get(originalClaim.id) ?? null;
+  const magPlanningZien = isAdmin || canAccessRoute(userRole, "/werkplaats/planning").allowed;
   const canManageClaims = canManageWarrantyClaims();
   const canDeleteClaims = canDeleteWarrantyClaims();
   const [isEditing, setIsEditing] = useState(false);
@@ -307,12 +316,27 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
             <DialogTitle className="flex items-center justify-between">
               <span className="flex flex-wrap items-center gap-1">Garantieclaim <ClaimNumber number={claim.claimNummer} claimId={claim.id} /></span>
               <div className="flex gap-2 items-center">
-                <WarrantyScheduleAction claimId={claim.id} />
+                <WarrantyScheduleAction claimId={claim.id} workOrder={toLinkedWorkOrder(werkorder)}
+                  onChanged={() => qc.invalidateQueries({ queryKey: CLAIM_WERKORDERS_KEY })} />
                 {getStatusBadge(claim.status)}
                 {getPriorityBadge(claim.priority)}
               </div>
             </DialogTitle>
           </DialogHeader>
+
+          {/* Live werkplaatsstatus (alleen weergave; afronden blijft een handmatige keuze) */}
+          {(werkorder || isClaimOpen(claim)) && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Werkplaats:</span>
+              <ClaimWerkplaatsBadge order={werkorder} claimOpen={isClaimOpen(claim)} />
+              {werkorder && magPlanningZien && (
+                <Button variant="link" size="sm" className="h-auto p-0 ml-auto"
+                  onClick={() => { onClose(); navigate("/werkplaats/planning"); }}>
+                  Bekijk in planning
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Voertuig Informatie */}
           <Card>

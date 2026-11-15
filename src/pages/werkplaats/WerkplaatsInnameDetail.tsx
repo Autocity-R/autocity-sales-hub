@@ -1,3 +1,5 @@
+import { useProfileName } from "@/hooks/useProfileName";
+import { formatRegistratie, laadkabelLabel, toAantal, toggleAantal } from "@/lib/innameRegistratie";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -25,6 +27,7 @@ interface Intake {
     id: string; brand: string; model: string; year: number | null; license_number: string | null;
     vin: string | null; mileage: number | null; color: string | null; status?: string | null;
     soh_pct?: number | string | null; aantal_sleutels?: number | null;
+    aantal_laadkabels?: number | null; laadkabels_geregistreerd_door?: string | null; laadkabels_geregistreerd_op?: string | null;
   } | null;
 }
 
@@ -53,6 +56,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
   // Inname-registratie: accu-SOH + aantal sleutels (direct op de auto opgeslagen)
   const [sohInput, setSohInput] = useState<string>("");
   const [keys, setKeys] = useState<1 | 2 | null>(null);
+  const [cables, setCables] = useState<1 | 2 | null>(null);
 
   // Onderdelen composer
   const [parts, setParts] = useState<Array<{ id: string; part_name: string; note: string | null; status: string }>>([]);
@@ -63,7 +67,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(true);
     const { data } = await supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status, soh_pct, aantal_sleutels)")
+      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status, soh_pct, aantal_sleutels, aantal_laadkabels, laadkabels_geregistreerd_door, laadkabels_geregistreerd_op)")
       .eq("id", id).single();
     if (data) {
       const draft = ((data as any).draft_selection || {}) as DraftSelection;
@@ -71,6 +75,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
       const rawSoh = (data as any).vehicle?.soh_pct;
       setSohInput(rawSoh === null || rawSoh === undefined ? "" : String(rawSoh).replace(".", ","));
       setKeys(((data as any).vehicle?.aantal_sleutels ?? null) as 1 | 2 | null);
+      setCables(toAantal((data as any).vehicle?.aantal_laadkabels));
       setSelection({
         spuit: draft.spuit?.parts ?? [],
         uitdeuk: draft.uitdeuk?.parts ?? [],
@@ -128,6 +133,24 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setIntake(prev => (prev ? { ...prev, vehicle: prev.vehicle ? { ...prev.vehicle, aantal_sleutels: value } : prev.vehicle } : prev));
     toast({ title: value === null ? "Aantal sleutels: onbekend" : `${value} ${value === 1 ? "sleutel" : "sleutels"} vastgelegd` });
   };
+
+  /** Laadkabels (optioneel): direct op de auto; wie/wanneer zet de database (trigger). */
+  const commitCables = async (n: 1 | 2) => {
+    if (!intake) return;
+    const value = toggleAantal(cables, n);
+    const { data, error } = await supabase.from("vehicles").update({ aantal_laadkabels: value } as any)
+      .eq("id", intake.vehicle_id).select("laadkabels_geregistreerd_door, laadkabels_geregistreerd_op").maybeSingle();
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    setCables(value);
+    setIntake(prev => (prev ? { ...prev, vehicle: prev.vehicle ? {
+      ...prev.vehicle, aantal_laadkabels: value,
+      laadkabels_geregistreerd_door: (data as any)?.laadkabels_geregistreerd_door ?? prev.vehicle.laadkabels_geregistreerd_door,
+      laadkabels_geregistreerd_op: (data as any)?.laadkabels_geregistreerd_op ?? prev.vehicle.laadkabels_geregistreerd_op,
+    } : prev.vehicle } : prev));
+    toast({ title: value === null ? "Laadkabels: leeg" : `${laadkabelLabel(value)} vastgelegd` });
+  };
+  const cablesDoorNaam = useProfileName(intake?.vehicle?.laadkabels_geregistreerd_door);
+  const cablesRegistratie = formatRegistratie(cablesDoorNaam, intake?.vehicle?.laadkabels_geregistreerd_op);
 
   const selectedParts = selection[discipline];
   const description = descriptions[discipline];
@@ -423,6 +446,31 @@ const WerkplaatsInnameDetail: React.FC = () => {
               </div>
               <div className="mt-1.5 text-[12px] text-slate-500">
                 {keys === null ? "Nog onbekend — kies 1 of 2" : "Nogmaals tikken maakt het weer onbekend"}
+              </div>
+
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2 mt-4">
+                Aantal laadkabels <span className="normal-case tracking-normal font-normal">(optioneel)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {([1, 2] as const).map(n => {
+                  const active = cables === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => commitCables(n)}
+                      className={cn(
+                        "border rounded-xl px-3 py-3 min-h-[48px] text-[14px] font-semibold transition-colors",
+                        active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                      )}
+                    >
+                      🔌 {laadkabelLabel(n)}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 text-[12px] text-slate-500">
+                {cables === null ? "Optioneel — alleen invullen als er laadkabels bij zitten" : cablesRegistratie || "Nogmaals tikken maakt het weer leeg"}
               </div>
             </div>
           </div>

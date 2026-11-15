@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { canViewSuppliers as canViewSuppliersRole } from "@/lib/supplierAccess";
-import { featureAccess, canManageChecklistsRole, canAssignTasksRole, canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole } from "@/lib/routeAccess";
+import { featureAccess, canManageChecklistsRole, canAssignTasksRole, canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole, workOrderCreateDisciplinesRole, canCreateExternWorkOrderRole, ALL_CREATE_DISCIPLINES } from "@/lib/routeAccess";
 
 export const useRoleAccess = () => {
   const { userRole, actualRole, isAdmin, roleLoading } = useAuth();
@@ -64,6 +64,11 @@ export const useRoleAccess = () => {
   // Directie-cockpit: overal inzicht, nergens mutaties
   // Read-only omgevingen: directie-cockpit én administratie (inzien + downloaden)
   const isDirectieReadOnly = () => isOperationeelDirecteur() || isAdministratie();
+
+  // Opdrachten aanmaken: OD alleen werkplaats + schadeherstel (bouwstap 16C); overige rollen ongewijzigd.
+  const workOrderCreateDisciplines = () => (isAdmin ? ALL_CREATE_DISCIPLINES : workOrderCreateDisciplinesRole(userRole));
+  const canCreateWorkOrders = () => workOrderCreateDisciplines().length > 0;
+  const canCreateExternWorkOrders = () => isAdmin || canCreateExternWorkOrderRole(userRole);
 
   // Mag werkorders goedkeuren / factureren (monteur nadrukkelijk NIET)
   // Goedkeuren/terugsturen: ook de operationeel directeur (factureren blijft bij beheer)
@@ -210,6 +215,9 @@ export const useRoleAccess = () => {
     isOperationeelDirecteur,
     isAdministratie,
     isDirectieReadOnly,
+    workOrderCreateDisciplines,
+    canCreateWorkOrders,
+    canCreateExternWorkOrders,
     isRestrictedWorkshopUser,
     getHomeRoute,
     hasWerkplaatsAccess,

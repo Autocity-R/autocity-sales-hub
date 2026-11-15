@@ -85,6 +85,9 @@ export const useVehicleDetailDialog = () => {
         salespersonName: details.salespersonName,
         sohPct: (data as any).soh_pct !== null && (data as any).soh_pct !== undefined ? Number((data as any).soh_pct) : null,
         aantalSleutels: ((data as any).aantal_sleutels ?? null) as 1 | 2 | null,
+        aantalLaadkabels: ((data as any).aantal_laadkabels ?? null) as 1 | 2 | null,
+        laadkabelsGeregistreerdDoor: (data as any).laadkabels_geregistreerd_door ?? null,
+        laadkabelsGeregistreerdOp: (data as any).laadkabels_geregistreerd_op ?? null,
       };
 
       setState(prev => ({

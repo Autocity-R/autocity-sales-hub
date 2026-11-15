@@ -232,6 +232,25 @@ export const canManagePoetsRole = (role: Role): boolean =>
 /** Goedkeuren / terugsturen in het Goedkeuren-menu. */
 export const canApproveWorkOrdersRole = canPlanWorkOrdersRole;
 
+/**
+ * Welke disciplines een rol zelf mag AANMAKEN (Planning "Taak toevoegen", Werkplaats > Auto's "Taak toewijzen").
+ * Operationeel directeur: alleen werkplaats + schadeherstel (spuit); poets/uitdeuk blijft zoals het was.
+ * Administratie: niets (alleen inzien). Overige rollen: ongewijzigd alle vier.
+ */
+export type CreateDiscipline = "spuit" | "werkplaats" | "uitdeuk" | "poets";
+export const ALL_CREATE_DISCIPLINES: CreateDiscipline[] = ["spuit", "werkplaats", "uitdeuk", "poets"];
+export const workOrderCreateDisciplinesRole = (role: Role): CreateDiscipline[] => {
+  if (role === "operationeel_directeur") return ["spuit", "werkplaats"];
+  if (role === "administratie") return [];
+  return ALL_CREATE_DISCIPLINES;
+};
+/**
+ * Externe klant + extern voertuig aanmaken: vereist rechten op contacts/vehicles die de
+ * operationeel directeur niet heeft (en niet krijgt). Daarom alleen intern voor OD.
+ */
+export const canCreateExternWorkOrderRole = (role: Role): boolean =>
+  role !== "operationeel_directeur" && role !== "administratie";
+
 
 /** Leenauto's uitlenen/innemen — gelijk aan public.leenauto_mag_schrijven(). */
 export const LEENAUTO_WRITE_ROLES = ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "verkoper", "operationeel", "operationeel_directeur"];
