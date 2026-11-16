@@ -88,6 +88,16 @@ describe("live poets revenue", () => {
     expect(aansluiting(rows).medewerkers).toBe(826.4);
     expect(aansluiting(rows).sluit).toBe(true);
   });
+  it("vanaf 16-11-2026 telt een open poetsbeurt € 100 ex btw (€ 121 incl.), daarvoor € 82,64", () => {
+    const oud = { ...beurt, id: "oud", day: "2026-11-15" };
+    const nieuw = { ...beurt, id: "nieuw", day: "2026-11-16" };
+    const p = pendingPoets([oud, nieuw], new Set(), "2026-11-01", "2026-12-01");
+    expect(p.bedrag).toBe(182.64);
+    expect(p.incl).toBe(221);
+    const rows = liveOmzetRegels([], [oud, nieuw], new Set(), "2026-11-01", "2026-12-01");
+    expect(takTotals(rows).poets).toBe(182.64);
+    expect(aansluiting(rows).sluit).toBe(true);
+  });
   it("invoice moves pending to invoiced without changing month total", () => {
     const ids = new Set(ten.map(b => b.id));
     const rows = liveOmzetRegels(invoice(ten), ten, ids, "2026-11-01", "2026-12-01");
@@ -111,5 +121,21 @@ describe("live poets revenue", () => {
   });
   it("external and missing profile work are excluded", () => {
     expect(pendingPoets([{ ...beurt, intern: false }, { ...beurt, id: "missing", intern: null }], new Set(), "2026-11-01", "2026-12-01").count).toBe(0);
+  });
+});
+
+describe("toerekening interne schadefactuur met velg", () => {
+  const orders = [
+    { id: "a", discipline: "spuit", assigned_to: "p1", parts: ["Bumper voor"] },
+    { id: "b", discipline: "spuit", assigned_to: "p2", parts: ["Velg R voor"] },
+  ];
+  it("nieuwe interne factuur: verdeling op deelprijs (€ 300 / € 100)", () => {
+    expect(allocate(400, "schadeherstel", orders, { invoiceKind: "intern", basisOp: "2026-11-16T09:00:00Z" }).map(x => x.bedrag)).toEqual([300, 100]);
+  });
+  it("oude interne factuur (vóór 16-11-2026) houdt de verdeling per aantal delen", () => {
+    expect(allocate(600, "schadeherstel", orders, { invoiceKind: "intern", basisOp: "2026-11-10T09:00:00Z" }).map(x => x.bedrag)).toEqual([300, 300]);
+  });
+  it("externe factuur houdt de verdeling per aantal delen", () => {
+    expect(allocate(1000, "schadeherstel", orders, { invoiceKind: "extern", basisOp: "2026-11-20T09:00:00Z" }).map(x => x.bedrag)).toEqual([500, 500]);
   });
 });

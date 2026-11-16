@@ -3,7 +3,7 @@ import { fetchAllPages } from "@/lib/fetchAllPages";
 import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount, uitvoerders } from "@/lib/performanceGroups";
 import { attachTijdregels, fetchTijdregelsSince, type Tijdregel } from "@/lib/tijdregels";
 import { inPeriod, nlDate, nlDayStart, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
-import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 
 export type DirectiePeriod = "week" | "month" | "quarter" | "year";
 export type DirectieBranch = "all" | "rotterdam" | "heerhugowaard";
@@ -185,9 +185,9 @@ export function kernCijfers(raw: DirectieRaw, from: Date, to: Date): KernCijfers
   };
 }
 
-/** Interne poetsbeurt: € 100,00 incl. btw per auto (= € 82,64 ex btw). */
-export const POETS_PRICE_INCL = 100;
-export { POETS_PRICE_EXCL };
+/** Interne poetsbeurt vanaf 16-11-2026: € 121,00 incl. btw per auto (= € 100 ex btw). */
+export const POETS_PRICE_INCL = 121;
+export const POETS_PRICE_EXCL = 100;
 
 export interface PoetsStats {
   internCars: number; externCars: number; unknownCars: number; minutesAvg: number;
@@ -329,7 +329,7 @@ export function warrantyStats(raw: DirectieRaw) {
 
 /**
  * Onderhanden werk / nog te factureren — alleen schatting, NOOIT bij omzet opgeteld.
- * - interne spuit/werkplaats-orders goedgekeurd zonder interne factuur → € 300 per deel;
+ * - interne spuit/werkplaats-orders goedgekeurd zonder interne factuur → € 300 per deel (velg € 100);
  * - goedgekeurde externe orders zonder gekoppelde factuur → aantal + lijst, geen bedrag.
  */
 export function wipEstimate(raw: DirectieRaw) {

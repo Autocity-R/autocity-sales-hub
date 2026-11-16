@@ -229,7 +229,7 @@ const DirectieDashboard: React.FC = () => {
                 </ResponsiveContainer>
               </div>
               <div className="mt-2 text-[11px] text-slate-500">
-                Onderhanden werk (schatting, niet in omzet): {eur(m.wip.internBedrag)} interne delen nog te factureren (€ 300 per deel)
+                Onderhanden werk (schatting, niet in omzet): {eur(m.wip.internBedrag)} interne delen nog te factureren (€ 300 per deel, velg € 100)
                 · {m.wip.externZonderFactuur.length} goedgekeurde externe {m.wip.externZonderFactuur.length === 1 ? "order" : "orders"} zonder factuur.
                 Poetsbeurten: {m.poets.internCars} intern · {m.poets.externCars} extern{m.poets.unknownCars ? ` · ${m.poets.unknownCars} onbekend` : ""}.
               </div>
@@ -394,7 +394,7 @@ const DirectieDashboard: React.FC = () => {
               </div>
             </Block>
 
-            {raw && <OmzetControle bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />}
+            {raw && <OmzetControle onChanged={() => refetch()} bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />}
           </div>
         )}
 

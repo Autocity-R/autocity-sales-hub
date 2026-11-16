@@ -2,8 +2,9 @@
  * Creditfacturen (BOUWSTAP 18) — pure regels, gelijk aan de database-RPC factuur_crediteren.
  *
  * - Een creditfactuur heeft negatieve regels en negatieve subtotal/vat/total.
- * - Btw zoals in het origineel: poets_intern rekent € 100 incl. = € 82,64 excl.,
- *   een 21%-factuur rekent 21%, anders de verhouding van het origineel.
+ * - Btw zoals in het origineel: poets_intern volgt de verhouding incl./excl. van die
+ *   maandfactuur (oud € 100 incl. = € 82,64 excl., nieuw € 121 = € 100), een 21%-factuur
+ *   rekent 21%, anders de btw-verhouding van het origineel.
  * - De laatste (deel)credit maakt btw en totaal exact nul (rest van het origineel).
  * - Afgeleid op het origineel: gecrediteerd bedrag, nog te crediteren, badges.
  *   payment_status van het origineel wordt nooit omgezet.
@@ -14,8 +15,6 @@ export const CREDIT_ROLES = ["owner", "admin", "aftersales_manager", "operatione
 export const mayCrediteer = (role: string | null | undefined, isAdmin = false) =>
   isAdmin || CREDIT_ROLES.includes(role || "");
 
-export const POETS_INCL = 100;
-export const POETS_EXCL = 82.64;
 
 const r2 = (n: number) => Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-9) / 100;
 
@@ -61,7 +60,7 @@ export function creditBedragen(orig: OrigForCredit, info: CreditInfo, excl: numb
   const e = r2(excl);
   let vat: number, tot: number;
   if (Math.abs(e - info.nogExcl) < 0.005) { vat = info.nogVat; tot = info.nogIncl; }
-  else if (orig.invoice_kind === "poets_intern") { tot = r2(e * POETS_INCL / POETS_EXCL); vat = r2(tot - e); }
+  else if (orig.invoice_kind === "poets_intern" && orig.subtotal) { tot = r2(e * orig.total / orig.subtotal); vat = r2(tot - e); }
   else if (orig.subtotal && Math.abs(orig.vat / orig.subtotal - 0.21) < 0.001) { vat = r2(e * 0.21); tot = r2(e + vat); }
   else { vat = r2(e * (orig.subtotal ? orig.vat / orig.subtotal : 0)); tot = r2(e + vat); }
   return { subtotal: -e, vat: -vat, total: -tot };

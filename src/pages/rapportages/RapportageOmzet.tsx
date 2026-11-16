@@ -31,7 +31,7 @@ const GroupBlock: React.FC<{
 
 const RapportageOmzet: React.FC = () => {
   const { period, branch, selection, rangeSlug, rangeLabel } = useRapportageFilters();
-  const { data: raw, isLoading } = useRapportageData(selection, branch);
+  const { data: raw, isLoading, refetch } = useRapportageData(selection, branch);
 
   const stats = raw ? omzetStats(raw) : null;
   const prevAll = raw ? omzetGroups(raw, raw.prevFrom, raw.prevTo) : null;
@@ -86,7 +86,7 @@ const RapportageOmzet: React.FC = () => {
           >
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Poetsomzet live (ex btw)" value={eur2(stats.poets.total)} pct={delta(stats.poets.total, prevPoets.total)} />
-              <Stat label="Nog op maandfactuur" value={eur(stats.poetsOpen.bedrag)} sub={`${stats.poetsOpen.count} beurten × € 82,64`} />
+              <Stat label="Nog op maandfactuur" value={eur(stats.poetsOpen.bedrag)} sub={`${stats.poetsOpen.count} beurten (€ 100 ex btw per beurt vanaf 16-11)`} />
               <Stat label="Beurten" value={num(stats.poets.parts, 0)} />
               <Stat label="Omzet per beurt" value={eur(stats.poets.avgPerPart)} />
             </div>
@@ -123,7 +123,7 @@ const RapportageOmzet: React.FC = () => {
             )}
           </Block>
 
-          {raw && <OmzetControle bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={rangeLabel} />}
+          {raw && <OmzetControle onChanged={() => refetch()} bron={raw.bron} van={dayStr(raw.from)} tot={dayStr(raw.to)} label={rangeLabel} />}
 
           <p className="text-[11px] text-slate-500">
             Perioden met minder dan {MIN_N} observaties tonen "nog onvoldoende data" in plaats van een gemiddelde.

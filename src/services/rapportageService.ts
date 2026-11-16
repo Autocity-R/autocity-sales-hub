@@ -3,7 +3,8 @@ import { attachTijdregels, fetchTijdregelsSince, type Tijdregel } from "@/lib/ti
 import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { nlDate as nlDayOf, nlDayStart, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
+import { nlDate as nlDayOf, nlDayStart, inPeriod, invoicesOf, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
+import { poetsPrijs } from "@/lib/interneTarieven";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
@@ -544,9 +545,9 @@ export function flowSteps(raw: RapRaw): FlowResult {
 
 /* ------------------------- E. Poets-specificatie ------------------------- */
 
-/** Interne poetsbeurt: € 100,00 incl. btw per auto (= € 82,64 ex btw). */
-export const POETS_PRICE_INCL = 100;
-export const POETS_PRICE_EXCL = 82.64;
+/** Interne poetsbeurt vanaf 16-11-2026: € 100,00 ex btw (€ 121,00 incl.); daarvoor € 82,64 ex (€ 100 incl.). */
+export const POETS_PRICE_INCL = 121;
+export const POETS_PRICE_EXCL = 100;
 
 export interface PoetsPerson {
   id: string; name: string; type: "intern" | "extern";
@@ -571,12 +572,15 @@ const poetsDoneAt = (o: RapOrder) => o.finished_at || o.approved_at || null;
 /** Poets-omzet in [a,b): gefactureerde poetsregels + interne beurten nog op maandfactuur. */
 const poetsRevenue = (raw: RapRaw, a: Date, b: Date) => {
   const inv = takTotals(inPeriod(raw.bron.regels, dayStr(a), dayStr(b))).poets;
+  const invIncl = invoicesOf(inPeriod(raw.bron.regels, dayStr(a), dayStr(b)).filter(r => r.tak === "poets"))
+    .reduce((s, r) => s + Number(r.total || 0), 0);
   const open = poetsNogOpMaandfactuur(raw.bron, dayStr(a), dayStr(b));
-  return { invoiced: inv, open: open.bedrag, openCount: open.count, total: Math.round((inv + open.bedrag) * 100) / 100 };
+  return {
+    invoiced: inv, open: open.bedrag, openCount: open.count, total: Math.round((inv + open.bedrag) * 100) / 100,
+    // incl. = factuurtotalen (ook na een (deel)creditfactuur) + open beurten tegen de prijs van hun werkdag
+    totalIncl: Math.round((invIncl + open.incl) * 100) / 100,
+  };
 };
-
-/** Excl. → incl. volgens de poetsprijs (€ 100 incl. = € 82,64 excl.); ook correct na een (deel)creditfactuur. */
-const poetsIncl = (excl: number) => Math.round(excl * POETS_PRICE_INCL / POETS_PRICE_EXCL * 100) / 100;
 
 export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStats {
   const profileOf = (id?: string | null) => raw.profiles.find(p => p.id === id);
@@ -628,12 +632,16 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
     const e = pm.get(id)!;
     e.cars += 1;
     e.seconds += Number(o.work_seconds || 0);
+    // prijs van de werkdag (tariefwijziging 16-11-2026)
+    const prijs = poetsPrijs(nlDayOf(poetsDoneAt(o) as string));
+    e.revenueIncl += prijs.incl;
+    e.revenueExcl += prijs.excl;
   });
   const persons = Array.from(pm.values()).map(e => ({
     ...e,
     avgMinutes: div(e.seconds / 60, e.cars),
-    revenueIncl: e.type === "intern" ? e.cars * POETS_PRICE_INCL : 0,
-    revenueExcl: e.type === "intern" ? Math.round(e.cars * POETS_PRICE_EXCL * 100) / 100 : 0,
+    revenueIncl: e.type === "intern" ? Math.round(e.revenueIncl * 100) / 100 : 0,
+    revenueExcl: e.type === "intern" ? Math.round(e.revenueExcl * 100) / 100 : 0,
   })).sort((a, b) => b.cars - a.cars);
 
   const months: PoetsStats["months"] = [];
@@ -644,7 +652,7 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
     const pr = poetsRevenue(raw, b.from, b.to);
     months.push({
       month: b.label, monthKey: b.key, intern, extern,
-      revenueIncl: poetsIncl(pr.total),
+      revenueIncl: pr.totalIncl,
       revenueExcl: pr.total, invoicedExcl: pr.invoiced, openExcl: pr.open,
       selected: +b.to > +from && +b.from < +to,
     });
@@ -653,7 +661,7 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   const pr = poetsRevenue(raw, from, to);
   return {
     internCars, externCars, unknownCars,
-    revenueIncl: poetsIncl(pr.total),
+    revenueIncl: pr.totalIncl,
     revenueExcl: pr.total, invoicedExcl: pr.invoiced, openExcl: pr.open, openCount: pr.openCount,
     persons, months, rows,
   };

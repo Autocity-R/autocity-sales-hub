@@ -76,6 +76,11 @@ describe("nog te factureren", () => {
     expect(pendingInvoiceAmount({ ...order, id: "werk", discipline: "werkplaats", parts: ["a", "b"] }, invoices)).toBe(300);
   });
 
+  it("rekent een velg tegen het nieuwe tarief van € 100 (bumper + velg = € 400)", () => {
+    expect(pendingInvoiceAmount({ ...order, id: "velg", parts: ["Bumper voor", "Velg R voor"] }, invoices)).toBe(400);
+    expect(pendingInvoiceAmount({ ...order, id: "velg1", part: "Velg L achter", parts: [] }, invoices)).toBe(100);
+  });
+
   it("sluit reeds gefactureerd, niet-goedgekeurd en extern werk uit", () => {
     expect(pendingInvoiceAmount({ ...order, id: "invoiced" }, invoices)).toBe(0);
     expect(pendingInvoiceAmount({ ...order, status: "afgerond" }, invoices)).toBe(0);

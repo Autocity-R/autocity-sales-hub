@@ -5984,6 +5984,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      intern_deel_prijs: {
+        Args: { p_op?: string; p_part: string }
+        Returns: number
+      }
+      intern_tarief_vanaf: { Args: never; Returns: string }
       invoice_order_ids: {
         Args: { p_src: Json; p_wo: string }
         Returns: string[]
@@ -6128,6 +6133,8 @@ export type Database = {
           work_order_id: string
         }[]
       }
+      poets_prijs_excl: { Args: { p_op: string }; Returns: number }
+      poets_prijs_incl: { Args: { p_op: string }; Returns: number }
       push_notify: {
         Args: {
           _body: string

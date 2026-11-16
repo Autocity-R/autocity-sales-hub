@@ -17,6 +17,10 @@ describe("btw op creditfacturen", () => {
   it("poets € 100 excl. → incl. € 121,01 (zelfde afronding als de RPC)", () => {
     expect(creditBedragen(poets, creditInfo(poets, []), 100)).toEqual({ subtotal: -100, vat: -21.01, total: -121.01 });
   });
+  it("nieuwe poets-maandfactuur (€ 100 ex / € 121 incl.): één beurt → −100 / −21 / −121", () => {
+    const nieuw = { invoice_kind: "poets_intern", subtotal: 1000, vat: 210, total: 1210, status: "verstuurd", payment_status: "open" };
+    expect(creditBedragen(nieuw, creditInfo(nieuw, []), 100)).toEqual({ subtotal: -100, vat: -21, total: -121 });
+  });
   it("volledig = exact het origineel, netto nul", () => {
     expect(creditBedragen(extern, creditInfo(extern, []), 2789.91)).toEqual({ subtotal: -2789.91, vat: -585.88, total: -3375.79 });
   });

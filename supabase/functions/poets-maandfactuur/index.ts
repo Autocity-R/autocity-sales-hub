@@ -36,7 +36,7 @@ const buildHtml = (res: any) => {
   <p style="margin:0 0 12px">Beste administratie,</p>
   <p style="margin:0 0 16px">Hierbij de interne maandfactuur <strong>${esc(res.invoice_number)}</strong> voor de poetswerkzaamheden van
   <strong>${esc(monthLabel(res.month))}</strong>. In totaal zijn er <strong>${esc(res.count)}</strong> auto's gepoetst door interne poetsers
-  (€ 100,00 incl. btw per auto).</p>
+  (€ 100,00 ex btw per auto vanaf 16-11-2026, daarvoor € 82,64 ex btw).</p>
   <table style="border-collapse:collapse;width:100%;max-width:680px;border:1px solid #e6e8ec;border-radius:8px;overflow:hidden">
     <thead>
       <tr style="background:#f7f8fa">

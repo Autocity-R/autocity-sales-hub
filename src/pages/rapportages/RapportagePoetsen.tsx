@@ -38,7 +38,7 @@ const RapportagePoetsen: React.FC = () => {
   );
 
   return (
-    <RapportagesShell title="Poetsen" subtitle="Interne poetsomzet (€ 100 incl. per auto) en tracking van externe poetsers — los van werkplaats en schadeherstel.">
+    <RapportagesShell title="Poetsen" subtitle="Interne poetsomzet (€ 100 ex btw per auto vanaf 16-11-2026, daarvoor € 82,64) en tracking van externe poetsers — los van werkplaats en schadeherstel.">
       {isLoading || !stats ? (
         <div className="space-y-3"><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>
       ) : (
@@ -46,7 +46,7 @@ const RapportagePoetsen: React.FC = () => {
           <Block
             title="🧽 Poetsomzet intern"
             icon={<Sparkles className="h-4 w-4 text-emerald-600" />}
-            sub={`€ ${POETS_PRICE_EXCL.toFixed(2).replace(".", ",")} ex btw / € ${POETS_PRICE_INCL},00 incl. btw per gepoetste auto`}
+            sub={`€ ${POETS_PRICE_EXCL.toFixed(2).replace(".", ",")} ex btw / € ${POETS_PRICE_INCL},00 incl. btw per gepoetste auto (vanaf 16-11-2026; daarvoor € 82,64 ex btw)`}
             onExport={() =>
               downloadCsv(`poets-omzet-${rangeSlug}.csv`, [{
                 periode: rangeSlug, vestiging: branch,
@@ -58,7 +58,7 @@ const RapportagePoetsen: React.FC = () => {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Intern gepoetst" value={num(stats.internCars, 0)} sub="auto's" />
               <Stat label="Poetsomzet live ex btw" value={eur2(stats.revenueExcl)} />
-              <Stat label="Nog op maandfactuur" value={eur(stats.openExcl)} sub={`${stats.openCount} beurten × € 82,64`} />
+              <Stat label="Nog op maandfactuur" value={eur(stats.openExcl)} sub={`${stats.openCount} beurten (€ 100 ex btw per beurt vanaf 16-11)`} />
               <Stat label="Extern gepoetst" value={num(stats.externCars, 0)} sub="alleen aantallen — extern factureert zelf" />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">waarvan {eur2(stats.invoicedExcl)} gefactureerd · {eur2(stats.openExcl)} nog op maandfactuur ({stats.openCount} beurten)</p>

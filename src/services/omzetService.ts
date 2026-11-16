@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { linkedOrderIds, nlDate, nlDayStart, pendingPoets, liveOmzetRegels, type OmzetRegel, type PoetsBeurt } from "@/lib/omzet";
 
-/** Interne poetsbeurt: € 100,00 incl. btw = € 82,64 excl. btw. */
+/** Oude poetsprijs ex btw; de prijs per werkdag komt uit src/lib/interneTarieven.ts. */
 export { POETS_PRICE_EXCL, type PoetsBeurt } from "@/lib/omzet";
 
 export interface InvoiceLink {
@@ -107,7 +107,7 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
 
 /* ---------------------- afgeleide cijfers op de bron ---------------------- */
 
-/** Interne poetsbeurten die nog niet op een maandfactuur staan (× € 82,64) in [van, tot). */
+/** Interne poetsbeurten die nog niet op een maandfactuur staan (prijs van hun werkdag) in [van, tot). */
 export function poetsNogOpMaandfactuur(bron: OmzetBron, van: string, tot: string) {
   return pendingPoets(bron.poetsBeurten, bron.poetsGefactureerd, van, tot);
 }

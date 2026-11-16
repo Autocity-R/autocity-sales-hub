@@ -3,6 +3,7 @@ import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AsCard, AsPill, AsLicensePlate } from "@/components/aftersales/ui";
 import { aansluiting, inPeriod, takTotals, TAK_LABEL, type Tak } from "@/lib/omzet";
+import { ExternOrderKnoppen } from "@/components/werkplaats/ExternOrderActies";
 import { controle, poetsNogOpMaandfactuur, omzetLiveRegels, type OmzetBron } from "@/services/omzetService";
 
 export const eur2 = (n: number) => new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2 }).format(n || 0);
@@ -10,8 +11,8 @@ const dmy = (s?: string | null) => (s ? new Date(s.length === 10 ? `${s}T12:00:0
 
 export const CONTROLE_ROLES = ["owner", "admin", "manager", "operationeel_directeur"];
 
-/** Controle-blok: alleen tonen, niets wijzigen. */
-export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string; label: string }> = ({ bron, van, tot, label }) => {
+/** Controle-blok: tonen; bij externe orders zonder factuur kunnen factureer-rollen alsnog factureren of wegklikken. */
+export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string; label: string; onChanged?: () => void }> = ({ bron, van, tot, label, onChanged }) => {
   const { userRole, isAdmin } = useAuth();
   if (!isAdmin && !CONTROLE_ROLES.includes(userRole || "")) return null;
   const regels = omzetLiveRegels(bron, van, tot);
@@ -43,7 +44,7 @@ export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string
           <div>Facturen {eur2(facturen)} + poets nog op maandfactuur {eur2(po.bedrag)} = <b data-testid="controle-totaal">{eur2(a.totaal)}</b></div>
           <div>{(Object.keys(TAK_LABEL) as Tak[]).map(k => `${TAK_LABEL[k]} ${eur2(t[k])}`).join(" + ")}</div>
           <div>Medewerkers {eur2(a.medewerkers)} + niet toegewezen {eur2(a.nietToegewezen)}</div>
-          <div className="text-muted-foreground">Nog op maandfactuur: {po.count} poetsbeurten × € 82,64 = {eur2(po.bedrag)}</div>
+          <div className="text-muted-foreground">Nog op maandfactuur: {po.count} poetsbeurten = {eur2(po.bedrag)} (€ 100 ex btw per beurt vanaf 16-11-2026, daarvoor € 82,64)</div>
         </div>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -51,7 +52,7 @@ export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string
           {c.losZonderWerkorder.map(r => <Row key={r.invoice_id}><b className="font-mono">{r.invoice_number}</b><span>{r.klant || "—"}</span><span>{eur2(r.subtotal)}</span><span>{TAK_LABEL[r.tak]}</span>{!r.telt_mee && <AsPill tone="slate">telt niet mee</AsPill>}</Row>)}
         </List>
         <List title="Goedgekeurde externe werkorders zonder factuur" empty="Geen." n={c.externZonderFactuur.length}>
-          {c.externZonderFactuur.map(o => <Row key={o.id}>{o.kenteken && <AsLicensePlate size="sm" value={o.kenteken} />}<span>{o.klant || "—"}</span><span>{o.discipline === "spuit" ? "Schadeherstel" : "Werkplaats"}</span><span>goedgekeurd {dmy(o.approved_at)}</span></Row>)}
+          {c.externZonderFactuur.map(o => <Row key={o.id}>{o.kenteken && <AsLicensePlate size="sm" value={o.kenteken} />}<span>{o.klant || "—"}</span><span>{o.discipline === "spuit" ? "Schadeherstel" : "Werkplaats"}</span><span>goedgekeurd {dmy(o.approved_at)}</span><ExternOrderKnoppen orderId={o.id} kenteken={o.kenteken} klant={o.klant} onChanged={onChanged} /></Row>)}
         </List>
         <List title="Handmatige concepten (tellen nog niet mee)" empty="Geen." n={c.conceptenHandmatig.length}>
           {c.conceptenHandmatig.map(i => <Row key={i.id}><b className="font-mono">{i.invoice_number || "concept"}</b><span>{i.customer?.name || "—"}</span><span>{eur2(Number(i.subtotal) || 0)}</span><span>{dmy(i.created_at)}</span></Row>)}

@@ -15,6 +15,7 @@
  * Orders zonder tijdregels houden de bovenstaande berekening (alle tijd naar assigned_to).
  */
 import { linkedOrderIds } from "@/lib/omzet";
+import { spuitOrderPrijs, WERKPLAATS_PRIJS } from "@/lib/interneTarieven";
 import { getWorkSchedule, workWindows, type WorkSchedule } from "@/lib/workHours";
 import { usesTijdregels, type Tijdregel } from "@/lib/tijdregels";
 
@@ -61,7 +62,9 @@ export function pendingInvoiceAmount(order: BillableOrder, invoices: OrderInvoic
   if (order.status !== "goedgekeurd" || (order.origin || "intern") !== "intern" || order.external_customer != null) return 0;
   if (!['spuit', 'werkplaats'].includes(order.discipline || "")) return 0;
   const alreadyInvoiced = invoices.some(invoice => invoice.invoice_kind === "intern" && linkedIds(invoice).includes(order.id));
-  return alreadyInvoiced ? 0 : billablePartCount(order) * 300;
+  if (alreadyInvoiced) return 0;
+  // Nog te factureren = tegen het huidige tarief (velg € 100, overige delen € 300, werkplaats € 300).
+  return order.discipline === "spuit" ? spuitOrderPrijs(order) : WERKPLAATS_PRIJS;
 }
 
 export const linkedExternalInvoice = (orderId: string, invoices: OrderInvoiceLink[]) =>

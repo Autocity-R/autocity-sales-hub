@@ -10,9 +10,11 @@
  *  - Koppeling: source_work_order_ids als niet leeg, anders work_order_id.
  *  - Telregel: telt_niet_mee = false en (status <> concept OF automatische interne factuur
  *    OF creditfactuur). Een creditfactuur telt in de maand van crediteren (NL-tijd).
- *  - Toerekening: schadeherstel per deel (€300 × delen), anders gelijk verdeeld over de
+ *  - Toerekening: schadeherstel per deel (aantal delen; interne facturen vanaf de
+ *    tariefdatum op deelprijs: velg € 100, overig € 300), anders gelijk verdeeld over de
  *    gekoppelde orders; zonder koppeling → "niet toegewezen" (medewerker null).
  */
+import { nieuwTarief, poetsPrijs, spuitOrderPrijs } from "@/lib/interneTarieven";
 
 export type Tak = "schadeherstel" | "werkplaats" | "poets";
 
@@ -61,12 +63,19 @@ export function omzetDatum(kind: string | null, createdAt: string, linked: Linke
 /** Afronden op centen, symmetrisch rond nul (zoals Postgres round): −x rondt als x. */
 export const round2Sym = (n: number) => Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-9) / 100;
 
-export interface AllocOrder { id: string; discipline: string | null; assigned_to: string | null; parts?: unknown }
+export interface AllocOrder { id: string; discipline: string | null; assigned_to: string | null; part?: string | null; parts?: unknown }
+export interface AllocOpts {
+  /** invoice_kind van de factuur (bij een credit: die van het origineel). */
+  invoiceKind?: string | null;
+  /** created_at van de factuur (bij een credit: die van het origineel). */
+  basisOp?: string | null;
+}
 /** Toerekening van één factuur naar medewerkers (spiegel van omzet_regels). */
-export function allocate(subtotal: number, tak: Tak, orders: AllocOrder[]): { work_order_id: string | null; medewerker_id: string | null; bedrag: number }[] {
+export function allocate(subtotal: number, tak: Tak, orders: AllocOrder[], opts: AllocOpts = {}): { work_order_id: string | null; medewerker_id: string | null; bedrag: number }[] {
   if (!orders.length) return [{ work_order_id: null, medewerker_id: null, bedrag: subtotal }];
+  const opPrijs = opts.invoiceKind === "intern" && !!opts.basisOp && nieuwTarief(opts.basisOp);
   const w = orders.map(o => (tak === "schadeherstel" && o.discipline === "spuit"
-    ? Math.max(1, Array.isArray(o.parts) ? o.parts.length : 0) : 1));
+    ? (opPrijs ? spuitOrderPrijs(o, opts.basisOp) : Math.max(1, Array.isArray(o.parts) ? o.parts.length : 0)) : 1));
   const g = w.reduce((a, b) => a + b, 0);
   return orders.map((o, i) => ({
     work_order_id: o.id, medewerker_id: o.assigned_to,
@@ -145,6 +154,7 @@ export function aansluiting(regels: OmzetRegel[]): Aansluiting {
 
 export const TAK_LABEL: Record<Tak, string> = { schadeherstel: "Schadeherstel", werkplaats: "Werkplaats", poets: "Poetsen" };
 
+/** Oude poetsprijs ex btw (tot de tariefdatum); gebruik poetsPrijs(dag) voor de prijs op een werkdag. */
 export const POETS_PRICE_EXCL = 82.64;
 export interface PoetsBeurt { id: string; day: string; assigned_to: string | null; vehicle_id: string | null; branch: string | null; intern: boolean | null }
 
@@ -157,7 +167,11 @@ export function nlDayStart(day: string): string {
 
 export function pendingPoets(beurten: PoetsBeurt[], invoiced: Set<string>, van: string, tot: string) {
   const list = beurten.filter(b => !!b.assigned_to && b.intern === true && !invoiced.has(b.id) && b.day >= van && b.day < tot);
-  return { list, count: list.length, bedrag: r2(list.length * POETS_PRICE_EXCL) };
+  return {
+    list, count: list.length,
+    bedrag: r2(list.reduce((a, b) => a + poetsPrijs(b.day).excl, 0)),
+    incl: r2(list.reduce((a, b) => a + poetsPrijs(b.day).incl, 0)),
+  };
 }
 
 /** Read-only revenue projection: invoice rows plus disjoint pending monthly polishing work. */
@@ -165,9 +179,9 @@ export function liveOmzetRegels(regels: OmzetRegel[], beurten: PoetsBeurt[], inv
   const pending = pendingPoets(beurten, invoiced, van, tot);
   return [...inPeriod(regels, van, tot), ...pending.list.map(b => ({
     invoice_id: `pending-poets:${b.id}`, invoice_number: null, invoice_kind: "poets_pending", tak: "poets" as const,
-    omzet_datum: b.day, subtotal: POETS_PRICE_EXCL, total: 100, status: "nog_op_maandfactuur", branch: b.branch,
+    omzet_datum: b.day, subtotal: poetsPrijs(b.day).excl, total: poetsPrijs(b.day).incl, status: "nog_op_maandfactuur", branch: b.branch,
     created_at: `${b.day}T12:00:00Z`, klant: null, kenteken: null,
     telt_mee: true, telt_niet_mee: false, telt_niet_mee_reden: null, gekoppeld: true,
-    work_order_id: b.id, discipline: "poets", medewerker_id: b.assigned_to, aandeel_delen: 1, bedrag: POETS_PRICE_EXCL,
+    work_order_id: b.id, discipline: "poets", medewerker_id: b.assigned_to, aandeel_delen: 1, bedrag: poetsPrijs(b.day).excl,
   }))];
 }
