@@ -5988,7 +5988,10 @@ export type Database = {
         Args: { p_op?: string; p_part: string }
         Returns: number
       }
+      intern_facturen_open_aantal: { Args: never; Returns: number }
       intern_tarief_vanaf: { Args: never; Returns: string }
+      interne_factuur_handmatig: { Args: never; Returns: boolean }
+      interne_factuur_vangnet_vanaf: { Args: never; Returns: string }
       invoice_order_ids: {
         Args: { p_src: Json; p_wo: string }
         Returns: string[]
@@ -6100,6 +6103,7 @@ export type Database = {
           warranty_claim_id: string
         }[]
       }
+      mag_interne_werkorder_goedkeuren: { Args: never; Returns: boolean }
       mark_contract_opened: { Args: { _token: string }; Returns: undefined }
       medewerker_historie: { Args: { p_user_id: string }; Returns: Json }
       medewerker_sessies_beeindigen: {
@@ -6145,6 +6149,10 @@ export type Database = {
           _url: string
         }
         Returns: undefined
+      }
+      rijklaar_factuur_bestaat: {
+        Args: { p_excl_order: string; p_vehicle_id: string }
+        Returns: boolean
       }
       set_vehicle_checklist: {
         Args: { p_checklist: Json; p_vehicle_id: string }
@@ -6203,6 +6211,7 @@ export type Database = {
         }[]
       }
       voertuig_werkhistorie: { Args: { p_vehicle_id: string }; Returns: Json }
+      werkorder_details: { Args: { p_ids: string[] }; Returns: Json[] }
       werkorder_factuur_niet_nodig: {
         Args: {
           p_reden: string
@@ -6210,6 +6219,23 @@ export type Database = {
           p_work_order_id: string
         }
         Returns: undefined
+      }
+      werkorder_goedkeuren_met_factuur: {
+        Args: {
+          p_geen_kosten_reden?: string
+          p_regels?: Json
+          p_work_order_id: string
+        }
+        Returns: Json
+      }
+      werkorder_goedkeuren_met_factuur_intern: {
+        Args: {
+          p_geen_kosten_reden: string
+          p_nummer: string
+          p_regels: Json
+          p_work_order_id: string
+        }
+        Returns: Json
       }
       werkorder_overnemen: { Args: { p_id: string }; Returns: undefined }
       werkorder_toch_factureren: {
