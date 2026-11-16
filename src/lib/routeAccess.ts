@@ -252,6 +252,10 @@ export const canCreateExternWorkOrderRole = (role: Role): boolean =>
   role !== "operationeel_directeur" && role !== "administratie";
 
 
+/** Garantieclaims aanmaken/afwikkelen/klantmails (zelfde als aftersales). warranty_claims INSERT/UPDATE-RLS staat al open voor ingelogde gebruikers. */
+export const WARRANTY_MANAGE_ROLES = ["owner", "admin", "manager", "verkoper", "aftersales_manager", "operationeel_directeur"];
+export const canManageWarrantyClaimsRole = (role: Role) => !!role && WARRANTY_MANAGE_ROLES.includes(role);
+
 /** Leenauto's uitlenen/innemen — gelijk aan public.leenauto_mag_schrijven(). */
 export const LEENAUTO_WRITE_ROLES = ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "verkoper", "operationeel", "operationeel_directeur"];
 /** Leenauto-historie lezen — gelijk aan public.leenauto_mag_lezen(). */

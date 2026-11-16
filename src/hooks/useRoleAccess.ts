@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { canViewSuppliers as canViewSuppliersRole } from "@/lib/supplierAccess";
-import { featureAccess, canManageChecklistsRole, canAssignTasksRole, canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole, workOrderCreateDisciplinesRole, canCreateExternWorkOrderRole, ALL_CREATE_DISCIPLINES } from "@/lib/routeAccess";
+import { featureAccess, canManageChecklistsRole, canAssignTasksRole, canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole, workOrderCreateDisciplinesRole, canCreateExternWorkOrderRole, ALL_CREATE_DISCIPLINES, canManageWarrantyClaimsRole } from "@/lib/routeAccess";
 
 export const useRoleAccess = () => {
   const { userRole, actualRole, isAdmin, roleLoading } = useAuth();
@@ -164,11 +164,8 @@ export const useRoleAccess = () => {
       userRole === 'aftersales_manager';
   };
 
-  // Claimbeheer (aanmaken, afwikkelen, verwijderen, klantmails): niet voor de chef
-  const canManageWarrantyClaims = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'aftersales_manager';
-  };
+  // Claimbeheer (aanmaken, afwikkelen, klantmails): niet voor de chef; operationeel directeur wel (zoals aftersales)
+  const canManageWarrantyClaims = () => isAdmin || canManageWarrantyClaimsRole(userRole);
 
   // Claim definitief verwijderen — sluit aan op de DELETE-policy op warranty_claims
   const canDeleteWarrantyClaims = () => {
