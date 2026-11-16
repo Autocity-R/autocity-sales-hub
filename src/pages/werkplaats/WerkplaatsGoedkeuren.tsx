@@ -20,12 +20,16 @@ import { PartChips } from "@/components/werkplaats/workOrderParts";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { NogTeFacturerenExtern } from "@/components/werkplaats/NogTeFacturerenExtern";
 import { externInvoiceDraft } from "@/lib/externFactuur";
+import { NogTeFacturerenIntern } from "@/components/werkplaats/NogTeFacturerenIntern";
+import { factuurVensterBijGoedkeuren, internInvoiceDraft } from "@/lib/interneFactuur";
+import { fetchWerkorderDetails, interneFactuurHandmatig, dispatchNaInterneFactuur, type GoedkeurResultaat } from "@/services/werkorderDetailsService";
+import type { WerkorderDetail } from "@/lib/factuurWerkorders";
 
 interface WO {
   id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
-  origin: string | null; external_customer: any | null;
+  origin: string | null; external_customer: any | null; source: string | null;
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin?: string | null } | null;
 }
 
@@ -50,6 +54,12 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   // Of het factuurvenster na goedkeuren automatisch opende en of er opgeslagen is
   const invoiceAutoRef = React.useRef(false);
   const invoiceSavedRef = React.useRef(false);
+  // BOUWSTAP 19B: met de vlag interne_factuur_handmatig 'aan' opent bij interne werkplaatsorders (geen rijklaar)
+  // verplicht het interne factuurvenster; de order wordt pas goedgekeurd als de factuur is opgeslagen.
+  const [vlagAan, setVlagAan] = useState(false);
+  const [internFactuur, setInternFactuur] = useState<{ w: WO; draft: InvoiceDraft; detail: WerkorderDetail | null } | null>(null);
+  const [bezigId, setBezigId] = useState<string | null>(null);
+  useEffect(() => { interneFactuurHandmatig().then(setVlagAan); }, []);
 
   const openInvoice = (w: WO, auto = false) => {
     invoiceAutoRef.current = auto;
@@ -68,7 +78,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, vehicle_id, discipline, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, discipline, source, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
       .in("discipline", ["werkplaats", "spuit"])
       .order("finished_at", { ascending: true });
@@ -83,7 +93,38 @@ const WerkplaatsGoedkeuren: React.FC = () => {
 
   const invoiceDraftFor = (w: WO): InvoiceDraft => externInvoiceDraft(w);
 
+  const vensterNodig = (w: WO) => factuurVensterBijGoedkeuren(w, vlagAan);
+
+  const openInternFactuur = async (w: WO) => {
+    setBezigId(w.id);
+    try {
+      const detail = (await fetchWerkorderDetails([w.id])).get(w.id) || null;
+      internOpgeslagenRef.current = false;
+      setInternFactuur({ w, detail, draft: internInvoiceDraft({ ...w, claim_nummer: detail?.claim_nummer }) });
+    } catch (e: any) {
+      toast({ title: "Order laden mislukt", description: e.message, variant: "destructive" });
+    }
+    setBezigId(null);
+  };
+
+  const internOpgeslagenRef = React.useRef(false);
+  const internFactuurKlaar = (res: GoedkeurResultaat) => {
+    internOpgeslagenRef.current = true;
+    const w = internFactuur?.w;
+    if (w && res.goedgekeurd) removeWorkOrderFromWerkplaatsCalendar(w.id, w.branch || "rotterdam");
+    if (!res.geen_kosten) dispatchNaInterneFactuur();
+    setFacturenRefresh(n => n + 1);
+    load();
+  };
+
+  const sluitInternFactuur = () => {
+    if (!internOpgeslagenRef.current) toast({ title: "Niet goedgekeurd", description: "De order wacht nog op goedkeuring." });
+    setInternFactuur(null);
+  };
+
   const approve = async (w: WO) => {
+    // Interne werkplaatsorder (geen rijklaar) met vlag aan: eerst de factuur, goedkeuren gebeurt in dezelfde handeling.
+    if (vensterNodig(w)) { await openInternFactuur(w); return; }
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
       status: "goedgekeurd", approved_by: userRes.user?.id ?? null, approved_at: new Date().toISOString(),
@@ -160,6 +201,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 <AsPill tone="amber">Factuur nodig</AsPill>
               </>
             )}
+            {vensterNodig(w) && <AsPill tone="amber">Interne factuur bij goedkeuren</AsPill>}
           </span>
         }
         subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
@@ -171,7 +213,9 @@ const WerkplaatsGoedkeuren: React.FC = () => {
               </Button>
             )}
             {canApprove && (
-              <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
+              <Button size="sm" onClick={() => approve(w)} disabled={bezigId === w.id}>
+                {bezigId === w.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}Goedkeuren
+              </Button>
             )}
             {allowReject && canApprove && (
               <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
@@ -253,6 +297,9 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         <section className="mt-8">
           <NogTeFacturerenExtern onChanged={load} refreshKey={facturenRefresh} />
         </section>
+        <section className="mt-6">
+          <NogTeFacturerenIntern onChanged={load} refreshKey={facturenRefresh} />
+        </section>
 
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
         <WorkshopInvoiceDialog
@@ -260,6 +307,13 @@ const WerkplaatsGoedkeuren: React.FC = () => {
           onOpenChange={(v) => !v && closeInvoice()}
           initial={invoice}
           onSaved={() => { invoiceSavedRef.current = true; setFacturenRefresh(n => n + 1); }}
+        />
+        <WorkshopInvoiceDialog
+          open={!!internFactuur}
+          onOpenChange={(v) => !v && sluitInternFactuur()}
+          initial={internFactuur?.draft ?? null}
+          intern={internFactuur ? { detail: internFactuur.detail, modus: "goedkeuren", onDone: internFactuurKlaar } : null}
+          onSaved={() => {}}
         />
       </AsPage>
     </DashboardLayout>

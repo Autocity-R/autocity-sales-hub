@@ -54,3 +54,9 @@
 - [x] Interne tarieven: velg bij schadeherstel € 100 ex btw (was € 300), poetsbeurt € 100 ex btw (was € 82,64), vanaf 16-11-2026
 - [x] Directie-cockpit: externe werkorders zonder factuur bekijken, alsnog factuur maken, wegklikken (geen factuur nodig)
 - [ ] Tarieven/cockpit ingelogde schermcontrole: externe Supabase biedt geen testsessie
+
+- [x] Bouwstap 19A: werkorders per factuur (uitklap, één RPC werkorder_details) + "Mogelijk dubbel — 2e rijklaar" badge/filter (27 facturen) (niet publiceren)
+- [x] Bouwstap 19B: interne werkplaatsfacturen: rijklaar €300 max 1× per auto, overige interne orders verplicht factuurvenster bij goedkeuren (RPC werkorder_goedkeuren_met_factuur), "Geen kosten" met reden; achter vlag interne_factuur_handmatig (staat 'uit')
+- [x] Bouwstap 19C: vangnet "Nog te factureren (intern)" + menubadge intern + extern
+- [ ] Bouwstap 19: vlag interne_factuur_handmatig op 'aan' zetten — wacht op publicatie door de eigenaar
+- [ ] Bouwstap 19 ingelogde schermcontrole (Goedkeuren-venster, Facturen-uitklap): externe Supabase biedt geen testsessie

@@ -130,3 +130,17 @@ export function mogelijkDubbel(
   });
   return out;
 }
+
+/* ------------------------------ Weergave ------------------------------ */
+
+const NL_DT = new Intl.DateTimeFormat("nl-NL", {
+  timeZone: "Europe/Amsterdam", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+});
+/** "dd-mm-jjjj uu:mm" in NL-tijd, of "—". */
+export const fmtNlDatumTijd = (iso: string | null | undefined) => (iso ? NL_DT.format(new Date(iso)).replace(",", "").replace(/\//g, "-") : "—");
+
+const VOERTUIG_STATUS: Record<string, string> = {
+  voorraad: "Voorraad", verkocht_b2b: "Verkocht B2B", verkocht_b2c: "Verkocht B2C", afgeleverd: "Afgeleverd",
+  onderweg: "Onderweg", in_transit: "Onderweg", werkplaats: "Werkplaats",
+};
+export const voertuigStatusLabel = (s: string | null | undefined) => (s ? VOERTUIG_STATUS[s] || s.replace(/_/g, " ") : "—");

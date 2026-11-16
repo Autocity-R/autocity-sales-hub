@@ -6,13 +6,19 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, Search, ExternalLink, Send, Pencil, Plus, Check, Calculator, Undo2 } from "lucide-react";
+import { FileText, Loader2, Search, ExternalLink, Send, Pencil, Plus, Check, Calculator, Undo2, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { VehicleTimeline } from "@/components/vehicle/VehicleTimeline";
+import { NogTeFacturerenIntern } from "@/components/werkplaats/NogTeFacturerenIntern";
+import { GekoppeldeWerkorders } from "@/components/werkplaats/GekoppeldeWerkorders";
+import { mogelijkDubbel, type DubbelOrder, type WerkorderDetail } from "@/lib/factuurWerkorders";
+import { fetchWerkorderDetails } from "@/services/werkorderDetailsService";
 import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { featureAccess } from "@/lib/routeAccess";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { countsAsRevenue, nlDate } from "@/lib/omzet";
+import { countsAsRevenue, nlDate, linkedOrderIds } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr } from "@/services/omzetService";
 import { NogTeFacturerenExtern } from "@/components/werkplaats/NogTeFacturerenExtern";
 import CrediteerFactuurDialog from "@/components/werkplaats/CrediteerFactuurDialog";
@@ -27,6 +33,7 @@ interface InvoiceRow {
   id: string; invoice_number: string | null; created_at: string; status: string;
   customer: any; vehicle: any; lines: any; total: number; pdf_path: string | null; branch: string | null;
   work_order_id: string | null; invoice_kind: string | null; subtotal: number | null;
+  source_work_order_ids: string[] | null;
   payment_status: string | null;
   omzet_datum: string | null; telt_niet_mee: boolean | null; tak: string | null;
   vat: number | null; vehicle_id: string | null;
@@ -49,7 +56,13 @@ const WerkplaatsFacturen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<InvoiceDraft | null>(null);
-  const [tab, setTab] = useState<"intern" | "extern" | "poets" | "credit">("extern");
+  const [tab, setTab] = useState<"intern" | "extern" | "poets" | "credit" | "dubbel">("extern");
+  // BOUWSTAP 19A: gekoppelde werkorders per factuur + "mogelijk dubbel" (alleen weergave)
+  const [checklistOrders, setChecklistOrders] = useState<DubbelOrder[]>([]);
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [details, setDetails] = useState<Map<string, WerkorderDetail>>(new Map());
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [historie, setHistorie] = useState<{ id: string; label: string } | null>(null);
   const [poetsOpen, setPoetsOpen] = useState({ count: 0, bedrag: 0 });
 
   const load = async () => {
@@ -57,10 +70,14 @@ const WerkplaatsFacturen: React.FC = () => {
     try {
       const data = await fetchAllPages<InvoiceRow>((a, b) => (supabase as any)
         .from("workshop_invoices")
-        .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, vat, pdf_path, branch, work_order_id, vehicle_id, invoice_kind, payment_status, omzet_datum, telt_niet_mee, tak, document_type, credit_van_invoice_id, credit_reden")
+        .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, vat, pdf_path, branch, work_order_id, source_work_order_ids, vehicle_id, invoice_kind, payment_status, omzet_datum, telt_niet_mee, tak, document_type, credit_van_invoice_id, credit_reden")
         .order("created_at", { ascending: false })
         .range(a, b));
       setRows(data);
+      const orders = await fetchAllPages<DubbelOrder>((a, b) => (supabase as any).from("work_orders")
+        .select("id, vehicle_id, discipline, source, approved_at")
+        .eq("discipline", "werkplaats").eq("source", "checklist").order("id").range(a, b));
+      setChecklistOrders(orders);
       const now = new Date();
       const from = new Date(now.getFullYear(), now.getMonth(), 1);
       const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -110,6 +127,17 @@ const WerkplaatsFacturen: React.FC = () => {
     });
     return m;
   }, [rows]);
+  // per origineel de creditfacturen (voor links)
+  const creditsVan = useMemo(() => {
+    const m = new Map<string, InvoiceRow[]>();
+    rows.filter(isCredit).forEach((c) => { if (c.credit_van_invoice_id) m.set(c.credit_van_invoice_id, [...(m.get(c.credit_van_invoice_id) || []), c]); });
+    return m;
+  }, [rows]);
+  const dubbel = useMemo(
+    () => mogelijkDubbel(rows, checklistOrders, (id) => !!infoOf.get(id)?.volledig),
+    [rows, checklistOrders, infoOf],
+  );
+  const dubbelAantal = useMemo(() => [...dubbel.values()].filter((d) => d.actief).length, [dubbel]);
   const asOrig = (r: InvoiceRow) => ({
     invoice_kind: r.invoice_kind, document_type: r.document_type, status: r.status, telt_niet_mee: r.telt_niet_mee,
     payment_status: r.payment_status, subtotal: Number(r.subtotal) || 0, vat: Number(r.vat) || 0, total: Number(r.total) || 0,
@@ -119,6 +147,7 @@ const WerkplaatsFacturen: React.FC = () => {
     const s = q.trim().toLowerCase();
     const base = rows.filter((r) => tab === "credit"
       ? isCredit(r)
+      : tab === "dubbel" ? !!dubbel.get(r.id)?.actief
       : (r.invoice_kind === "poets_intern" ? "poets" : r.invoice_kind === "intern" ? "intern" : "extern") === tab);
     if (!s) return base;
     return base.filter((r) => {
@@ -134,7 +163,37 @@ const WerkplaatsFacturen: React.FC = () => {
       ]);
       return matchesSearch(hay, q);
     });
-  }, [rows, q, tab, byId]);
+  }, [rows, q, tab, byId, dubbel]);
+
+  // Details van de werkorders van alle zichtbare facturen in één RPC, zodra er iets is uitgeklapt.
+  useEffect(() => {
+    if (open.size === 0) return;
+    const nodig = filtered.flatMap((r) => linkedOrderIds(r.source_work_order_ids, r.work_order_id)).filter((id) => !details.has(id));
+    if (nodig.length === 0) return;
+    let stop = false;
+    setDetailsLoading(true);
+    fetchWerkorderDetails(nodig)
+      .then((m) => { if (!stop) setDetails((prev) => { const n = new Map(prev); m.forEach((v, k) => n.set(k, v)); return n; }); })
+      .catch((e) => toast({ title: "Werkorders laden mislukt", description: e.message, variant: "destructive" }))
+      .finally(() => { if (!stop) setDetailsLoading(false); });
+    return () => { stop = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open.size > 0, filtered]);
+
+  const toggleOpen = (id: string) => setOpen((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  /** Naar een andere factuur springen: juiste tab, zoeken op nummer, uitklappen. */
+  const naarFactuur = (id: string) => {
+    const r = byId.get(id);
+    if (!r) return;
+    setTab(isCredit(r) ? "credit" : r.invoice_kind === "poets_intern" ? "poets" : r.invoice_kind === "intern" ? "intern" : "extern");
+    setQ(r.invoice_number || "");
+    setOpen((prev) => new Set(prev).add(id));
+  };
+  const FactuurLink: React.FC<{ id: string }> = ({ id }) => (
+    <button type="button" className="font-mono text-primary hover:underline" onClick={() => naarFactuur(id)}>
+      {byId.get(id)?.invoice_number || "concept"}
+    </button>
+  );
 
   // Maandtotalen op omzetdatum (NL) met dezelfde telregel als alle omzetschermen
   const monthTotals = useMemo(() => {
@@ -232,6 +291,9 @@ const WerkplaatsFacturen: React.FC = () => {
         <div className="mb-4">
           <NogTeFacturerenExtern onChanged={load} />
         </div>
+        <div className="mb-4">
+          <NogTeFacturerenIntern onChanged={load} />
+        </div>
 
         <AsCard>
           <AsCardHead
@@ -243,11 +305,14 @@ const WerkplaatsFacturen: React.FC = () => {
               <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input className="pl-8" placeholder="Zoeken…" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant={tab === "extern" ? "default" : "outline"} onClick={() => setTab("extern")}>Extern</Button>
               <Button size="sm" variant={tab === "intern" ? "default" : "outline"} onClick={() => setTab("intern")}>Intern</Button>
               <Button size="sm" variant={tab === "poets" ? "default" : "outline"} onClick={() => setTab("poets")}>Poets</Button>
               <Button size="sm" variant={tab === "credit" ? "destructive" : "outline"} onClick={() => setTab("credit")}>Creditfacturen</Button>
+              <Button size="sm" variant={tab === "dubbel" ? "default" : "outline"} onClick={() => setTab("dubbel")}>
+                <Copy className="h-3.5 w-3.5 mr-1" />Mogelijk dubbel ({dubbelAantal})
+              </Button>
             </div>
           </div>
 
@@ -264,6 +329,10 @@ const WerkplaatsFacturen: React.FC = () => {
                 const betaal = betaalLabel(asOrig(r), info);
                 const orig = credit && r.credit_van_invoice_id ? byId.get(r.credit_van_invoice_id) : null;
                 const definitief = r.status === "verstuurd" || r.status === "definitief";
+                const d = dubbel.get(r.id);
+                const orderIds = linkedOrderIds(r.source_work_order_ids, r.work_order_id);
+                const isOpen = open.has(r.id);
+                const credits = creditsVan.get(r.id) || [];
                 return (
                 <div key={r.id} className={`flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-3 px-4 py-3 ${credit ? "bg-destructive/5" : ""}`}>
                   <div className="flex items-center gap-2 md:contents">
@@ -273,7 +342,18 @@ const WerkplaatsFacturen: React.FC = () => {
                   <div className="md:flex-1 md:min-w-[150px] min-w-0 text-[13px] text-slate-800">
                     <div className="truncate">{r.customer?.name || "—"}</div>
                     {credit && (
-                      <div className="text-[11.5px] text-destructive truncate">Creditering van {orig?.invoice_number || "factuur"}{r.credit_reden ? ` · ${r.credit_reden}` : ""}</div>
+                      <div className="text-[11.5px] text-destructive truncate">
+                        Creditering van {orig ? <FactuurLink id={orig.id} /> : "factuur"}{r.credit_reden ? ` · ${r.credit_reden}` : ""}
+                      </div>
+                    )}
+                    {d && (
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+                        {d.actief
+                          ? <AsPill tone="amber">Mogelijk dubbel — 2e rijklaar voor deze auto</AsPill>
+                          : <AsPill tone="slate">Dubbel — gecorrigeerd</AsPill>}
+                        <span className="text-slate-500">eerder:</span>
+                        {d.andere.map((id) => <FactuurLink key={id} id={id} />)}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center gap-2 md:contents">
@@ -323,13 +403,39 @@ const WerkplaatsFacturen: React.FC = () => {
                         <Pencil className="h-3.5 w-3.5 mr-1" />Afmaken
                       </Button>
                     )}
+                    <Button size="sm" variant="ghost" onClick={() => toggleOpen(r.id)} aria-expanded={isOpen}>
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 mr-1" /> : <ChevronRight className="h-3.5 w-3.5 mr-1" />}
+                      Werkorders{orderIds.length ? ` (${orderIds.length})` : ""}
+                    </Button>
                   </div>
+                  {isOpen && (
+                    <GekoppeldeWerkorders
+                      orderIds={orderIds}
+                      details={details}
+                      loading={detailsLoading}
+                      onOpenVehicle={(id, label) => setHistorie({ id, label })}
+                      onOpenClaim={(id) => navigate(`/warranty?claim=${id}`)}
+                      extra={(orig || credits.length > 0) ? (
+                        <div className="flex flex-wrap items-center gap-1.5 text-slate-600">
+                          {orig && <>Origineel: <FactuurLink id={orig.id} /></>}
+                          {credits.length > 0 && <>Gecrediteerd via: {credits.map((c) => <FactuurLink key={c.id} id={c.id} />)}</>}
+                        </div>
+                      ) : null}
+                    />
+                  )}
                 </div>
                 );
               })}
             </div>
           )}
         </AsCard>
+
+        <Sheet open={!!historie} onOpenChange={(v) => { if (!v) setHistorie(null); }}>
+          <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+            <SheetHeader><SheetTitle>{historie?.label || "Auto"}</SheetTitle></SheetHeader>
+            {historie && <div className="mt-4"><VehicleTimeline vehicleId={historie.id} /></div>}
+          </SheetContent>
+        </Sheet>
 
         <WorkshopInvoiceDialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} initial={edit} onSaved={load} />
         <CrediteerFactuurDialog
