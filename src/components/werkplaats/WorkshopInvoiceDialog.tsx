@@ -138,9 +138,9 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
             </p>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             {/* Formulier */}
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               {isIntern ? (
                 <AsCard>
                   <AsCardHead icon={<User className="h-4 w-4" />} tone="blue" title="Klant" subtitle="Interne factuur · tak werkplaats" />
@@ -208,7 +208,7 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
                   </div>
                   <div>
                     <Label className="text-[12px]">Km-stand</Label>
-                    <Input value={vehicle.mileage} onChange={(e) => setVehicle({ ...vehicle, mileage: e.target.value })} placeholder="84120" />
+                    <Input readOnly={isIntern} value={vehicle.mileage} onChange={(e) => setVehicle({ ...vehicle, mileage: e.target.value })} placeholder="84120" />
                   </div>
                 </div>
               </AsCard>
@@ -224,9 +224,9 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
                 />
                 <div className="p-4 space-y-2">
                   {lines.map((l, i) => (
-                    <div key={i} className="flex gap-2 items-center">
+                    <div key={i} className={`flex gap-2 items-center ${isIntern && isGarantie ? "flex-wrap sm:flex-nowrap" : ""}`}>
                       <Input
-                        className="flex-1" placeholder="Omschrijving"
+                        className={`flex-1 ${isIntern && isGarantie ? "min-w-full sm:min-w-0" : ""}`} placeholder="Omschrijving"
                         value={l.description} onChange={(e) => setLine(i, { description: e.target.value })}
                       />
                       {isIntern && isGarantie && (
@@ -310,7 +310,7 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
             </div>
 
             {/* Live preview */}
-            <AsCard className="self-start lg:sticky lg:top-2">
+            <AsCard className="self-start lg:sticky lg:top-2 min-w-0">
               <AsCardHead icon={<FileText className="h-4 w-4" />} tone="violet" title="Voorbeeld" subtitle="Zo wordt de factuur verstuurd" />
               <div className="p-3 bg-slate-100 overflow-x-auto">
                 <div
