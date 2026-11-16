@@ -50,3 +50,6 @@
 - [x] Bouwstap 18A: creditfacturen in de database (kolommen, RPC factuur_crediteren met dry-run, omzet in creditmaand, guard) (niet publiceren)
 - [x] Bouwstap 18B: Crediteren-knop + dialoog + pdf "CREDITFACTUUR" + lijstbadges/filter in Facturen (niet publiceren)
 - [x] Bouwstap 18C: credits correct in rapportages, cockpit, controle, klanten, historie per auto (niet publiceren)
+
+- [ ] Interne tarieven: velg bij schadeherstel € 100 ex btw (was € 300), poetsbeurt € 100 ex btw (was € 82,64), vanaf 16-11-2026
+- [ ] Directie-cockpit: externe werkorders zonder factuur bekijken, alsnog factuur maken, wegklikken (geen factuur nodig)
