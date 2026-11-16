@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { Check, PackageCheck, PackageOpen, Truck, Loader2, Plus, Trash2, Pencil, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { canManagePartsOrdersRole } from "@/lib/routeAccess";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 import { eur } from "@/services/werkplaatsPrijsService";
 
@@ -44,9 +45,10 @@ const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
 };
 
 const WerkplaatsOnderdelen: React.FC = () => {
-  const { isDirectieReadOnly, userRole } = useRoleAccess();
-  const readOnly = isDirectieReadOnly();
+  const { isAdmin, userRole } = useRoleAccess();
   const isVerkoper = userRole === "verkoper";
+  // Alleen-inzien voor wie niet beheert en geen verkoper is (o.a. administratie); OD beheert zoals aftersales.
+  const readOnly = !isAdmin && !isVerkoper && !canManagePartsOrdersRole(userRole);
   const [uid, setUid] = useState<string | null>(null);
   const [orders, setOrders] = useState<PartOrder[]>([]);
   const [loading, setLoading] = useState(true);

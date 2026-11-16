@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { canAccessRoute, featureAccess, workOrderCreateDisciplinesRole, canCreateExternWorkOrderRole, canManageWarrantyClaimsRole } from "./routeAccess";
+import { canAccessRoute, featureAccess, workOrderCreateDisciplinesRole, canCreateExternWorkOrderRole, canManageWarrantyClaimsRole, canManagePartsOrdersRole } from "./routeAccess";
 
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
@@ -347,5 +347,15 @@ describe("garantieclaims afwikkelen", () => {
   it("werkplaats_chef en administratie niet", () => {
     expect(canManageWarrantyClaimsRole("werkplaats_chef")).toBe(false);
     expect(canManageWarrantyClaimsRole("administratie")).toBe(false);
+  });
+});
+
+describe("onderdelen beheren", () => {
+  it("operationeel directeur mag onderdelen aanpassen, net als aftersales", () => {
+    expect(canManagePartsOrdersRole("operationeel_directeur")).toBe(true);
+    expect(canManagePartsOrdersRole("aftersales_manager")).toBe(true);
+  });
+  it("administratie blijft alleen inzien", () => {
+    expect(canManagePartsOrdersRole("administratie")).toBe(false);
   });
 });
