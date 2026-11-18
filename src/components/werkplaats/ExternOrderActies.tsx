@@ -16,7 +16,7 @@ import type { InvoiceDraft } from "@/services/workshopInvoiceService";
 /** Wie mag een externe order alsnog factureren of als "geen factuur nodig" wegklikken (gelijk aan de RPC-rolcheck). */
 export const useMagExternFactureren = () => {
   const { userRole, isAdmin } = useAuth();
-  return isAdmin || featureAccess["handmatige-facturen"](userRole);
+  return isAdmin || featureAccess["extern-factureren"](userRole);
 };
 
 /** Verplichte reden kiezen en de order via de RPC als "geen factuur nodig" markeren. */

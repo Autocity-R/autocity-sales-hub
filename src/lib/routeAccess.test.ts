@@ -287,6 +287,19 @@ describe("prijschecker + handmatige facturen", () => {
       expect(featureAccess["handmatige-facturen"](r)).toBe(false);
     }
   });
+
+  it("operationeel directeur mag externe orders zonder factuur alsnog factureren of wegklikken", () => {
+    for (const r of ["owner", "admin", "aftersales_manager", "operationeel_directeur"]) {
+      expect(featureAccess["extern-factureren"](r)).toBe(true);
+    }
+    for (const r of ["manager", "verkoper", "werkplaats_chef", "monteur", "administratie", "inkoper"]) {
+      expect(featureAccess["extern-factureren"](r)).toBe(false);
+    }
+  });
+
+  it("losse handmatige facturen blijven zonder operationeel directeur", () => {
+    expect(featureAccess["handmatige-facturen"]("operationeel_directeur")).toBe(false);
+  });
 });
 
 describe("aftersales klantgegevens", () => {

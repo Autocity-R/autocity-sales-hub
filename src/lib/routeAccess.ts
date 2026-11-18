@@ -187,6 +187,12 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   /** Handmatige facturen opmaken. */
   "handmatige-facturen": (r) => isAdminRole(r) || r === "aftersales_manager",
   /**
+   * Externe goedgekeurde werkorders zonder factuur alsnog factureren of als "geen factuur nodig"
+   * wegklikken (cockpit + vangnet). Gelijk aan de rolcheck in werkorder_factuur_niet_nodig en
+   * de RLS wi_insert_directeur/wi_update_directeur_concept voor de directeur.
+   */
+  "extern-factureren": (r) => isAdminRole(r) || r === "aftersales_manager" || r === "operationeel_directeur",
+  /**
    * Onderdelen bestellen/inzien. Verkoop en owner zetten bestellingen klaar
    * zodat aftersales ze kan afhandelen; facturatie/goedkeuren blijft gescheiden.
    */

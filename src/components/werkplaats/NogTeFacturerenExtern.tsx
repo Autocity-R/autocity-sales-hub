@@ -41,7 +41,7 @@ const fmtDatum = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString
  */
 export const NogTeFacturerenExtern: React.FC<{ onChanged?: () => void; refreshKey?: number }> = ({ onChanged, refreshKey }) => {
   const { userRole, isAdmin } = useAuth();
-  const mayEdit = isAdmin || featureAccess["handmatige-facturen"](userRole);
+  const mayEdit = isAdmin || featureAccess["extern-factureren"](userRole);
 
   const [open, setOpen] = useState<OpenOrder[]>([]);
   const [gemarkeerd, setGemarkeerd] = useState<GemarkeerdeOrder[]>([]);
