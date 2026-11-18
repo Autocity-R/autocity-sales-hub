@@ -60,3 +60,6 @@
 - [x] Bouwstap 19C: vangnet "Nog te factureren (intern)" + menubadge intern + extern
 - [ ] Bouwstap 19: vlag interne_factuur_handmatig op 'aan' zetten — wacht op publicatie door de eigenaar
 - [ ] Bouwstap 19 ingelogde schermcontrole (Goedkeuren-venster, Facturen-uitklap): externe Supabase biedt geen testsessie
+
+- [x] Bouwstap 20: operationeel directeur kan externe werkorders zonder factuur (cockpit + vangnet) alsnog factureren of als service wegklikken (niet gepubliceerd)
+- [ ] Bouwstap 20 ingelogde schermcontrole als OD: externe Supabase biedt geen testsessie
